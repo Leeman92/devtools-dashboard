@@ -4,68 +4,12 @@ on:
   push:
     branches: [main]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    outputs:
-      image: harbor.patricklehmann.dev/dashboard/dashboard:latest
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Install Vault CLI
-        run: |
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-          sudo apt update && sudo apt install vault -y
-
-      - name: Authenticate with Vault and load secrets
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
-        run: |
-          HARBOR_USERNAME=$(vault kv get -field=HARBOR_USERNAME ci/github)
-          HARBOR_PASSWORD=$(vault kv get -field=HARBOR_PASSWORD ci/github)
-          echo "HARBOR_USERNAME=$HARBOR_USERNAME" >> $GITHUB_ENV
-          echo "HARBOR_PASSWORD=$HARBOR_PASSWORD" >> $GITHUB_ENV
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
-      - name: Log in to Harbor
-        uses: docker/login-action@v2
-        with:
-          registry: harbor.patricklehmann.dev
-          username: ${{ env.HARBOR_USERNAME }}
-          password: ${{ env.HARBOR_PASSWORD }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: ./backend
-          file: ./backend/.docker/Dockerfile
-          target: production
-          push: true
-          tags: harbor.patricklehmann.dev/dashboard/dashboard:latest
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
-
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
   deploy:
-    needs: build
     runs-on: ubuntu-latest
     environment: production
 
@@ -75,22 +19,49 @@ jobs:
 
       - name: Install Vault CLI
         run: |
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-          sudo apt update && sudo apt install vault -y
+          curl -fsSL https://releases.hashicorp.com/vault/1.15.4/vault_1.15.4_linux_amd64.zip -o vault.zip
+          unzip vault.zip
+          sudo mv vault /usr/local/bin/vault
 
-      - name: Authenticate with Vault and load secrets
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+      - name: Request GitHub OIDC token
+        id: generate_token
+        uses: actions/github-script@v7
+        with:
+          script: |
+            return {
+              token: process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN,
+              url: process.env.ACTIONS_ID_TOKEN_REQUEST_URL
+            }
+
+      - name: Authenticate with Vault via OIDC
+        id: vault-auth
         run: |
-          SERVER_IP=$(vault kv get -field=SERVER_IP ci/github)
-          SERVER_PORT=$(vault kv get -field=SERVER_PORT ci/github)
-          SSH_PRIVATE_KEY=$(vault kv get -field=SSH_PRIVATE_KEY ci/github)
-          echo "SERVER_IP=$SERVER_IP" >> $GITHUB_ENV
-          echo "SERVER_PORT=$SERVER_PORT" >> $GITHUB_ENV
+          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
+
+          JWT=$(curl -s -H "Authorization: bearer ${{ steps.generate_token.outputs.token }}" \
+            "${{ steps.generate_token.outputs.url }}" | jq -r '.value')
+
+          VAULT_TOKEN=$(curl -s --request POST --data @- "$VAULT_ADDR/v1/auth/jwt/login" <<EOF
+{
+  "jwt": "$JWT",
+  "role": "github-actions"
+}
+EOF
+          | jq -r '.auth.client_token')
+
+          echo "::add-mask::$VAULT_TOKEN"
+          echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV
+
+      - name: Read secrets from Vault
+        run: |
+          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
+          export VAULT_TOKEN="${{ env.VAULT_TOKEN }}"
+
+          echo "Fetching secrets from Vault..."
+          echo "SERVER_IP=$(vault read -field=data.SERVER_IP ci/data/github)" >> $GITHUB_ENV
+          echo "SERVER_PORT=$(vault read -field=data.SERVER_PORT ci/data/github)" >> $GITHUB_ENV
           echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
-          echo "$SSH_PRIVATE_KEY" >> $GITHUB_ENV
+          vault read -field=data.SSH_PRIVATE_KEY ci/data/github >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Copy files to server
@@ -115,19 +86,25 @@ jobs:
           script: |
             set -e
             echo "Starting deployment..."
+
             if ! docker info | grep -q "Swarm: active"; then
               echo "Initializing Docker Swarm..."
               docker swarm init
             fi
+
             echo "Setting up network..."
             docker network create --driver overlay dashboard-network || true
+
             echo "Cleaning up old images..."
             docker image prune -f --filter "until=24h"
+
             echo "Pulling latest image..."
             docker pull harbor.patricklehmann.dev/dashboard/dashboard:latest
+
             echo "Deploying stack..."
             cd /home/patrick/dashboard
             docker stack deploy -c docker-stack.yml dashboard
+
             echo "Waiting for services to be ready..."
             timeout=120
             while [ $timeout -gt 0 ]; do
@@ -138,18 +115,22 @@ jobs:
               sleep 2
               timeout=$((timeout-2))
             done
+
             if [ $timeout -eq 0 ]; then
               echo "Service deployment failed!"
               docker service logs dashboard_dashboard
               exit 1
             fi
+
             echo "Verifying deployment..."
             sleep 10
+
             if ! docker service ls | grep dashboard_dashboard | grep -q "2/2"; then
               echo "Service health check failed!"
               docker service logs dashboard_dashboard
               exit 1
             fi
+
             unhealthy_containers=$(docker ps --filter "health=unhealthy" --filter "name=dashboard" --format "{{.Names}}")
             if [ ! -z "$unhealthy_containers" ]; then
               echo "Found unhealthy containers:"
@@ -157,4 +138,5 @@ jobs:
               docker service logs dashboard_dashboard
               exit 1
             fi
+
             echo "Deployment completed successfully!"
