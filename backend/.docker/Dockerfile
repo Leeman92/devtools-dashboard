@@ -36,5 +36,5 @@ USER root
 FROM base AS production
 
 USER $USERNAME
-RUN composer install --optimize-autoloader --no-dev
+RUN composer install -vvv
 USER root
