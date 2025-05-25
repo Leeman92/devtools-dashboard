@@ -51,8 +51,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          dockerfile: backend/.docker/Dockerfile
           context: backend
+          dockerfile: .docker/Dockerfile
           target: production
           push: true
           tags: harbor.patricklehmann.dev/dashboard/dashboard:latest
@@ -81,7 +81,7 @@ jobs:
 
       - name: Authenticate with Vault and load secrets
         env:
-          VAULT_ADDR: https://vault.patricklehmann.dev
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
           VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
         run: |
           SERVER_IP=$(vault kv get -field=SERVER_IP ci/github)
