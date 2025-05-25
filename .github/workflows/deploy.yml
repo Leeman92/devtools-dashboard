@@ -52,7 +52,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: backend
-          dockerfile: .docker/Dockerfile
+          file: .docker/Dockerfile
           target: production
           push: true
           tags: harbor.patricklehmann.dev/dashboard/dashboard:latest
