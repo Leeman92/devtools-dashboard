@@ -51,8 +51,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          context: backend
-          file: .docker/Dockerfile
+          context: ./backend
+          file: ./backend/.docker/Dockerfile
           target: production
           push: true
           tags: harbor.patricklehmann.dev/dashboard/dashboard:latest
