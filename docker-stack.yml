@@ -1,0 +1,56 @@
+services:
+  dashboard:
+    image: harbor.patricklehmann.dev/dashboard/dashboard:latest
+    ports:
+      - target: 80
+        published: 3001
+        protocol: tcp
+        mode: ingress
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+        failure_action: pause
+        monitor: 30s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    networks:
+      - dashboard-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.docker.stack.description=Patrick Lehmann's Development Dashboard"
+      - "com.docker.stack.namespace=dashboard"
+      - "com.docker.stack.maintainer=Patrick Lehmann"
+      - "com.docker.stack.version=1.0.0"
+
+networks:
+  dashboard-network:
+    driver: overlay
+    attachable: true
+    driver_opts:
+      encrypted: "true"
+    labels:
+      - "com.docker.stack.description=Dashboard Network"
+      - "com.docker.stack.namespace=dashboard" 

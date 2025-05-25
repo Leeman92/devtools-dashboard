@@ -1,0 +1,17 @@
+services:
+  backend:
+    build:
+      context: backend
+      dockerfile: .docker/Dockerfile
+      target: development
+    # map your source code into the container
+    volumes:
+      - ./backend:/app
+    # expose port 80 in the container on 8080 of the host
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    # optional: set your app environment
+    environment:
+      APP_ENV: dev

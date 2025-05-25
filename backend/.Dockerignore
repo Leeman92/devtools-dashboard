@@ -1,0 +1,4 @@
+.docker/
+vendor/
+var/cache/
+var/log/

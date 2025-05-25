@@ -1,0 +1,45 @@
+/backend/vendor
+/backend/node_modules
+/backend/public/hot
+/backend/public/storage
+/backend/storage/*.key
+/backend/storage/logs/*
+/backend/storage/framework/cache/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/bootstrap/cache/*
+.env
+.env.backup
+.env.backend.local
+.phpunit.result.cache
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# Build & Dependencies
+/public/build
+/public/css
+/public/js
+/public/mix-manifest.json
+package-lock.json
+yarn.lock
+composer.lock
+
+# Testing
+/coverage
+.phpunit.cache
+
+# Local development
+*.log
+*.sql
+*.sqlite 
