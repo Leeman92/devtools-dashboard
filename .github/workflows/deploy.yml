@@ -19,10 +19,17 @@ jobs:
           curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
           sudo apt update && sudo apt install vault -y
+      - name: Debug token permissions
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          vault token lookup
+          vault kv get ci/github
 
       - name: Authenticate with Vault and load secrets
         env:
-          VAULT_ADDR: https://vault.patricklehmann.dev
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
           VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
         run: |
           HARBOR_USERNAME=$(vault kv get -field=HARBOR_USERNAME ci/github)
