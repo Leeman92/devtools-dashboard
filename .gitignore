@@ -33,7 +33,7 @@ Thumbs.db
 /public/mix-manifest.json
 package-lock.json
 yarn.lock
-composer.lock
+# Note: composer.lock should be committed for reproducible builds
 
 # Testing
 /coverage
