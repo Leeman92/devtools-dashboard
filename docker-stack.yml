@@ -11,6 +11,8 @@ services:
     configs:
       - source: dashboard_env
         target: /app/.env
+        uid: '1000'
+        gid: '1000'
         mode: 0600
     deploy:
       replicas: 2
