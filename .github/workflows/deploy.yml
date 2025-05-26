@@ -172,6 +172,55 @@ jobs:
           echo "SERVER_PORT=$(vault kv get -field=SERVER_PORT ci/github)" >> $GITHUB_ENV
           printf "SSH_PRIVATE_KEY<<__EOT__\n%s\n__EOT__\n" "$(vault kv get -field=SSH_PRIVATE_KEY ci/github)" >> "$GITHUB_ENV"
 
+      - name: Generate environment file from Vault
+        run: |
+          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
+          export VAULT_TOKEN="${{ env.VAULT_TOKEN }}"
+          
+          echo "🔐 Generating .env.production from Vault secrets..."
+          
+          # Create the environment file
+          cat > .env.production << EOF
+          # Environment file generated from HashiCorp Vault
+          # Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          # Environment: production
+          
+          # Symfony Environment
+          APP_ENV=production
+          APP_DEBUG=false
+          
+          # Secrets from Vault
+          APP_SECRET=$(vault kv get -field=app_secret secret/dashboard/production)
+          DATABASE_URL=$(vault kv get -field=database_url secret/dashboard/production)
+          
+          # Optional secrets (with fallbacks)
+          EOF
+          
+          # Add optional secrets if they exist
+          if vault kv get -field=mailer_dsn secret/dashboard/production >/dev/null 2>&1; then
+            echo "MAILER_DSN=$(vault kv get -field=mailer_dsn secret/dashboard/production)" >> .env.production
+          fi
+          
+          if vault kv get -field=redis_url secret/dashboard/production >/dev/null 2>&1; then
+            echo "REDIS_URL=$(vault kv get -field=redis_url secret/dashboard/production)" >> .env.production
+          fi
+          
+          # Add static configuration
+          cat >> .env.production << EOF
+          
+          # Static configuration
+          APP_TIMEZONE=UTC
+          TRUSTED_PROXIES=127.0.0.1,REMOTE_ADDR
+          TRUSTED_HOSTS='^dashboard\.patricklehmann\.dev$'
+          
+          # Logging
+          LOG_LEVEL=info
+          LOG_CHANNEL=stderr
+          EOF
+          
+          echo "✅ Environment file generated"
+          echo "📏 File size: $(wc -l < .env.production) lines"
+
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -179,7 +228,7 @@ jobs:
           username: patrick
           port: ${{ env.SERVER_PORT }}
           key: ${{ env.SSH_PRIVATE_KEY }}
-          source: "docker-stack.yml"
+          source: "docker-stack.yml,.env.production"
           target: "/home/patrick/dashboard"
           strip_components: 0
 
@@ -210,6 +259,19 @@ jobs:
 
             echo "Setting up network..."
             docker network create --driver overlay dashboard-network || true
+
+            echo "Setting up environment configuration..."
+            # Remove old config if it exists
+            docker config rm dashboard_env 2>/dev/null || true
+            
+            # Create new config from environment file
+            if [ -f "/home/patrick/dashboard/.env.production" ]; then
+              docker config create dashboard_env /home/patrick/dashboard/.env.production
+              echo "✅ Environment configuration created"
+            else
+              echo "❌ Environment file not found!"
+              exit 1
+            fi
 
             echo "Cleaning up old images..."
             docker image prune -f --filter "until=24h"
