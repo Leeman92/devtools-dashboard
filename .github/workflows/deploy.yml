@@ -23,22 +23,25 @@ jobs:
           unzip vault.zip
           sudo mv vault /usr/local/bin/vault
 
-      - name: Request GitHub OIDC token
-        id: generate_token
-        uses: actions/github-script@v7
+      - name: Request OIDC token
+        id: oidc-token
+        uses: actions/authenticate-to-oidc@v1
         with:
-          script: |
-            return {
-              token: process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN,
-              url: process.env.ACTIONS_ID_TOKEN_REQUEST_URL
-            }
+          audience: ${{ secrets.VAULT_ADDR }}
 
-      - name: TEMP DEBUG – Request and print GitHub OIDC token
-        id: print_jwt
+      - name: Authenticate with Vault via OIDC
+        id: vault-auth
         run: |
-          echo "Requesting OIDC token from GitHub..."
-          echo "TOKEN: ${{ steps.generate_token.outputs.token }}"
-          echo "URL: ${{ steps.generate_token.outputs.url }}"
+          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
+
+          JWT="${{ steps.oidc-token.outputs.id_token }}"
+          echo "JWT: $JWT"
+
+          VAULT_TOKEN=$(echo "{\"jwt\": \"$JWT\", \"role\": \"github-actions\"}" | \
+            curl -s --request POST --data @- "$VAULT_ADDR/v1/auth/jwt/login" | jq -r '.auth.client_token')
+
+          echo "::add-mask::$VAULT_TOKEN"
+          echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV
 
       - name: Read secrets from Vault
         run: |
