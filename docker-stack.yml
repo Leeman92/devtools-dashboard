@@ -10,7 +10,7 @@ services:
         mode: ingress
     configs:
       - source: dashboard_env
-        target: /app/.env.local
+        target: /app/.env
         mode: 0600
     deploy:
       replicas: 2
