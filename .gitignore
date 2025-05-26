@@ -43,3 +43,6 @@ yarn.lock
 *.log
 *.sql
 *.sqlite 
+
+/scripts
+/nginx
