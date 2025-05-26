@@ -59,7 +59,7 @@ fetch_vault_secret() {
 
 # Fetch required secrets first
 echo "📋 Fetching required secrets..."
-if fetch_vault_secret "app_secret" "secret/dashboard/production"; then
+if fetch_vault_secret "APP_SECRET" "secret/dashboard/production"; then
     APP_SECRET="$VAULT_SECRET_VALUE"
     echo "::add-mask::$APP_SECRET"
 else
@@ -67,7 +67,7 @@ else
     exit 1
 fi
 
-if fetch_vault_secret "database_url" "secret/dashboard/production"; then
+if fetch_vault_secret "DATABASE_URL" "secret/dashboard/production"; then
     DATABASE_URL="$VAULT_SECRET_VALUE"
     echo "::add-mask::$DATABASE_URL"
 else

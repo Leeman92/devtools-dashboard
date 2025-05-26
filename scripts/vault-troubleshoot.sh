@@ -150,13 +150,13 @@ if ! vault kv get "$DASHBOARD_PATH" >/dev/null 2>&1; then
     echo ""
     echo "   # Required secrets"
     echo "   vault kv put secret/dashboard/production \\"
-    echo "     app_secret=\"\$(openssl rand -hex 32)\" \\"
-    echo "     database_url=\"mysql://username:password@host:3306/dashboard_prod\""
+    echo "     APP_SECRET=\"\$(openssl rand -hex 32)\" \\"
+    echo "     DATABASE_URL=\"mysql://username:password@host:3306/dashboard_prod\""
     echo ""
     echo "   # Optional secrets"
     echo "   vault kv put secret/dashboard/production \\"
-    echo "     mailer_dsn=\"smtp://user:pass@smtp.example.com:587\" \\"
-    echo "     redis_url=\"redis://localhost:6379\""
+    echo "     MAILER_DSN=\"smtp://user:pass@smtp.example.com:587\" \\"
+    echo "     REDIS_URL=\"redis://localhost:6379\""
     echo ""
 fi
 

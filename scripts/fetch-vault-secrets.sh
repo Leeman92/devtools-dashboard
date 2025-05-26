@@ -99,22 +99,22 @@ fetch_secret() {
 
 # Fetch database secrets
 echo "📊 Fetching database configuration..."
-fetch_secret "DATABASE_URL" "database_url"
+fetch_secret "DATABASE_URL" "DATABASE_URL"
 
 # Fetch application secrets
 echo "🔑 Fetching application secrets..."
-fetch_secret "APP_SECRET" "app_secret"
+fetch_secret "APP_SECRET" "APP_SECRET"
 
 # Fetch optional secrets (won't fail if missing)
 echo "📧 Fetching optional configuration..."
-fetch_secret "MAILER_DSN" "mailer_dsn" false
-fetch_secret "REDIS_URL" "redis_url" false
+fetch_secret "MAILER_DSN" "MAILER_DSN" false
+fetch_secret "REDIS_URL" "REDIS_URL" false
 
 # Fetch custom application secrets
 echo "🎯 Fetching custom application secrets..."
-fetch_secret "JWT_SECRET_KEY" "jwt_secret_key" false
-fetch_secret "JWT_PUBLIC_KEY" "jwt_public_key" false
-fetch_secret "JWT_PASSPHRASE" "jwt_passphrase" false
+fetch_secret "JWT_SECRET_KEY" "JWT_SECRET_KEY" false
+fetch_secret "JWT_PUBLIC_KEY" "JWT_PUBLIC_KEY" false
+fetch_secret "JWT_PASSPHRASE" "JWT_PASSPHRASE" false
 
 # Add any additional static configuration
 cat >> "$ENV_FILE" << EOF

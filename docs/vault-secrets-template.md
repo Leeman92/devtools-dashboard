@@ -16,8 +16,8 @@ These secrets **must** be present in Vault for the application to function:
 
 | Vault Key | Environment Variable | Description | Example |
 |-----------|---------------------|-------------|---------|
-| `app_secret` | `APP_SECRET` | Symfony application secret (32+ chars) | `a1b2c3d4e5f6...` |
-| `database_url` | `DATABASE_URL` | Database connection string | `mysql://user:pass@host:3306/db` |
+| `APP_SECRET` | `APP_SECRET` | Symfony application secret (32+ chars) | `a1b2c3d4e5f6...` |
+| `DATABASE_URL` | `DATABASE_URL` | Database connection string | `mysql://user:pass@host:3306/db` |
 
 ## Optional Secrets
 
@@ -25,11 +25,11 @@ These secrets are optional and the application will work without them:
 
 | Vault Key | Environment Variable | Description | Example |
 |-----------|---------------------|-------------|---------|
-| `mailer_dsn` | `MAILER_DSN` | Email service configuration | `smtp://user:pass@smtp.example.com:587` |
-| `redis_url` | `REDIS_URL` | Redis cache connection | `redis://localhost:6379` |
-| `jwt_secret_key` | `JWT_SECRET_KEY` | JWT private key path | `/app/config/jwt/private.pem` |
-| `jwt_public_key` | `JWT_PUBLIC_KEY` | JWT public key path | `/app/config/jwt/public.pem` |
-| `jwt_passphrase` | `JWT_PASSPHRASE` | JWT key passphrase | `your-jwt-passphrase` |
+| `MAILER_DSN` | `MAILER_DSN` | Email service configuration | `smtp://user:pass@smtp.example.com:587` |
+| `REDIS_URL` | `REDIS_URL` | Redis cache connection | `redis://localhost:6379` |
+| `JWT_SECRET_KEY` | `JWT_SECRET_KEY` | JWT private key path | `/app/config/jwt/private.pem` |
+| `JWT_PUBLIC_KEY` | `JWT_PUBLIC_KEY` | JWT public key path | `/app/config/jwt/public.pem` |
+| `JWT_PASSPHRASE` | `JWT_PASSPHRASE` | JWT key passphrase | `your-jwt-passphrase` |
 
 ## Vault Commands
 
@@ -38,21 +38,21 @@ These secrets are optional and the application will work without them:
 ```bash
 # Store required secrets
 vault kv put secret/dashboard/production \
-  app_secret="your-32-character-secret-key-here" \
-  database_url="mysql://username:password@host:3306/dashboard_prod"
+  APP_SECRET="your-32-character-secret-key-here" \
+  DATABASE_URL="mysql://username:password@host:3306/dashboard_prod"
 
 # Store optional secrets
 vault kv put secret/dashboard/production \
-  mailer_dsn="smtp://user:pass@smtp.example.com:587" \
-  redis_url="redis://localhost:6379"
+  MAILER_DSN="smtp://user:pass@smtp.example.com:587" \
+  REDIS_URL="redis://localhost:6379"
 ```
 
 ### Store Staging Secrets
 
 ```bash
 vault kv put secret/dashboard/staging \
-  app_secret="staging-32-character-secret-key" \
-  database_url="mysql://username:password@host:3306/dashboard_staging"
+  APP_SECRET="staging-32-character-secret-key" \
+  DATABASE_URL="mysql://username:password@host:3306/dashboard_staging"
 ```
 
 ### View Stored Secrets
@@ -62,7 +62,7 @@ vault kv put secret/dashboard/staging \
 vault kv get secret/dashboard/production
 
 # Get specific secret
-vault kv get -field=app_secret secret/dashboard/production
+vault kv get -field=DATABASE_URL secret/dashboard/production
 ```
 
 ## Security Best Practices

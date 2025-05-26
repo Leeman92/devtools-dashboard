@@ -148,8 +148,8 @@ docker swarm init
 ```bash
 # Set up Vault secrets for staging
 vault kv put secret/staging/dashboard \
-  app_secret="staging-secret" \
-  database_url="mysql://user:pass@db:3306/dashboard_staging"
+  APP_SECRET="staging-secret" \
+  DATABASE_URL="mysql://user:pass@db:3306/dashboard_staging"
 ```
 
 3. **Deploy the stack**:

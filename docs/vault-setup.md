@@ -21,13 +21,13 @@ First, store your application secrets in Vault using the correct path structure:
 ```bash
 # Required secrets
 vault kv put secret/dashboard/production \
-  app_secret="$(openssl rand -hex 32)" \
-  database_url="mysql://username:password@host:3306/dashboard_prod"
+  APP_SECRET="$(openssl rand -hex 32)" \
+  DATABASE_URL="mysql://username:password@host:3306/dashboard_prod"
 
 # Optional secrets
 vault kv put secret/dashboard/production \
-  mailer_dsn="smtp://user:pass@smtp.example.com:587" \
-  redis_url="redis://localhost:6379"
+  MAILER_DSN="smtp://user:pass@smtp.example.com:587" \
+  REDIS_URL="redis://localhost:6379"
 ```
 
 ### 2. Verify Vault Access
