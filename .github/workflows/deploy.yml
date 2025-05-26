@@ -84,8 +84,14 @@ jobs:
           export VAULT_TOKEN="${{ env.VAULT_TOKEN }}"
 
           echo "Fetching secrets from Vault..."
-          echo "HARBOR_USERNAME=$(vault kv get -field=HARBOR_USERNAME ci/github)" >> $GITHUB_ENV
-          echo "HARBOR_PASSWORD=$(vault kv get -field=HARBOR_PASSWORD ci/github)" >> $GITHUB_ENV
+          HARBOR_USERNAME=$(vault kv get -field=HARBOR_USERNAME ci/github)
+          HARBOR_PASSWORD=$(vault kv get -field=HARBOR_PASSWORD ci/github)
+          
+          echo "::add-mask::$HARBOR_USERNAME"
+          echo "::add-mask::$HARBOR_PASSWORD"
+          
+          echo "HARBOR_USERNAME=$HARBOR_USERNAME" >> $GITHUB_ENV
+          echo "HARBOR_PASSWORD=$HARBOR_PASSWORD" >> $GITHUB_ENV
 
       - name: Log in to Harbor
         uses: docker/login-action@v3
@@ -170,7 +176,11 @@ jobs:
           echo "Fetching secrets from Vault..."
           echo "SERVER_IP=$(vault kv get -field=SERVER_IP ci/github)" >> $GITHUB_ENV
           echo "SERVER_PORT=$(vault kv get -field=SERVER_PORT ci/github)" >> $GITHUB_ENV
-          printf "SSH_PRIVATE_KEY<<__EOT__\n%s\n__EOT__\n" "$(vault kv get -field=SSH_PRIVATE_KEY ci/github)" >> "$GITHUB_ENV"
+          
+          # Fetch SSH private key and mask it
+          SSH_KEY=$(vault kv get -field=SSH_PRIVATE_KEY ci/github)
+          echo "::add-mask::$SSH_KEY"
+          printf "SSH_PRIVATE_KEY<<__EOT__\n%s\n__EOT__\n" "$SSH_KEY" >> "$GITHUB_ENV"
 
       - name: Generate environment file from Vault
         run: |
@@ -202,12 +212,14 @@ jobs:
             echo "💥 Failed to fetch APP_SECRET - deployment cannot continue"
             exit 1
           fi
+          echo "::add-mask::$APP_SECRET"
           
           DATABASE_URL=$(fetch_vault_secret "database_url" "secret/dashboard/production")
           if [ $? -ne 0 ]; then
             echo "💥 Failed to fetch DATABASE_URL - deployment cannot continue"
             exit 1
           fi
+          echo "::add-mask::$DATABASE_URL"
           
           echo "✅ Required secrets retrieved successfully"
           
@@ -230,6 +242,7 @@ jobs:
           echo "📧 Fetching optional secrets..."
           
           if MAILER_DSN=$(fetch_vault_secret "mailer_dsn" "secret/dashboard/production" 2>/dev/null); then
+            echo "::add-mask::$MAILER_DSN"
             echo "MAILER_DSN=${MAILER_DSN}" >> .env.production
             echo "✅ MAILER_DSN added"
           else
@@ -237,6 +250,7 @@ jobs:
           fi
           
           if REDIS_URL=$(fetch_vault_secret "redis_url" "secret/dashboard/production" 2>/dev/null); then
+            echo "::add-mask::$REDIS_URL"
             echo "REDIS_URL=${REDIS_URL}" >> .env.production
             echo "✅ REDIS_URL added"
           else
@@ -264,8 +278,15 @@ jobs:
           # Validate required variables are present
           if ! grep -q "^APP_SECRET=" .env.production || ! grep -q "^DATABASE_URL=" .env.production; then
             echo "💥 Validation failed - required variables missing"
-            echo "Generated file contents:"
-            cat .env.production
+            echo "🔍 Checking which variables are missing:"
+            if ! grep -q "^APP_SECRET=" .env.production; then
+              echo "❌ APP_SECRET is missing"
+            fi
+            if ! grep -q "^DATABASE_URL=" .env.production; then
+              echo "❌ DATABASE_URL is missing"
+            fi
+            echo "⚠️  Environment file structure (secrets redacted):"
+            grep -E "^[A-Z_]+=.*" .env.production | sed 's/=.*/=***REDACTED***/'
             exit 1
           fi
           
