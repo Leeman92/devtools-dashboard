@@ -55,50 +55,71 @@ cd devtools-dashboard
 ```bash
 # Backend
 cp backend/.env.example backend/.env
-
-# Frontend (if exists)
-cp frontend/.env.example frontend/.env
 ```
 
-3. Start the application:
+3. Start the full development environment:
 ```bash
-# Development
+# Start both backend and frontend
+./scripts/dev.sh
+
+# Or start services individually:
+# Backend only
 docker compose up -d
 
-# Or use the Makefile
-make up
+# Frontend only  
+./scripts/docker-node.sh dev
 ```
 
 4. Access the application:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
+- **Frontend Dashboard**: http://localhost:5173
+- **Backend API**: http://localhost:80
 
 ## Development
 
-### Backend (Symfony)
+### Full Stack Development
 ```bash
-cd backend
-composer install
-php bin/console cache:clear
+# Start both backend and frontend with one command
+./scripts/dev.sh
+
+# Check status of all services
+./scripts/dev.sh status
+
+# View logs from all services
+./scripts/dev.sh logs
+
+# Stop all services
+./scripts/dev.sh stop
 ```
 
-### Using Makefile Commands
+### Backend (Symfony)
 ```bash
-# Start all services
+# Use Docker-based PHP/Composer (no local installation required)
+./scripts/docker-php.sh install
+./scripts/docker-php.sh console cache:clear
+./scripts/docker-php.sh console doctrine:migrations:migrate
+```
+
+### Frontend (React + TypeScript)
+```bash
+# Use Docker-based Node.js/npm (no local installation required)
+./scripts/docker-node.sh install
+./scripts/docker-node.sh dev
+./scripts/docker-node.sh build
+```
+
+### Using Makefile Commands (Legacy)
+```bash
+# Start backend services only
 make up
 
 # Stop all services
 make down
 
-# View logs
+# View backend logs
 make logs
 
 # Run tests
 make test
-
-# Build and deploy
-make build
-make deploy
 ```
 
 ## Project Structure
