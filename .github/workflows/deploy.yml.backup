@@ -5,8 +5,8 @@ on:
     branches: [main]
 
 env:
-  VAULT_VERSION: "1.19.4"
-  VAULT_SHA256: "d8621f31427ecb6712923fc2db207b3b3c04711b722b11f34627cd4cf837a9c6"
+  VAULT_VERSION: "1.15.4"
+  VAULT_SHA256: "f42f550713e87cceef2f29a4e2b754491697475e3d26c0c5616314e40edd8e1b"
 
 permissions:
   id-token: write
