@@ -45,3 +45,5 @@ yarn.lock
 *.sqlite 
 
 /nginx
+
+backend/var/cache

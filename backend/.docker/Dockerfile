@@ -29,7 +29,7 @@ COPY symfony.lock ./
 RUN ls -la composer.* symfony.lock
 
 # Install dependencies as root first, then change ownership
-RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
+RUN composer update --no-scripts && composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
 
 COPY . .
 
@@ -51,7 +51,7 @@ RUN apk add --no-cache \
     bash
 
 # Install dev dependencies
-RUN composer install --optimize-autoloader
+RUN composer update --no-scripts && composer install --optimize-autoloader
 
 USER $USERNAME
 
