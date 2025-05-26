@@ -82,6 +82,36 @@ jobs:
             exit 1
           fi
           
+      - name: 'Validate Environment Generation Script'
+        run: |
+          echo "🔐 Checking environment generation script..."
+          if [ -f "scripts/deployment/generate-env-file.sh" ]; then
+            # Extract required vars from services.yaml
+            SERVICES_VARS=$(grep -o "env([^)]*)" backend/config/services.yaml | sed 's/env(string://' | sed 's/env(//' | sed 's/)$//' | sed 's/default:[^:]*:string://' | sort -u)
+            
+            # Extract vars from generate-env-file.sh
+            SCRIPT_VARS=$(grep -A 20 "REQUIRED_SECRETS=" scripts/deployment/generate-env-file.sh | grep '".*"' | sed 's/.*"\(.*\)".*/\1/' | sort -u)
+            
+            # Check if all services vars are in the script
+            MISSING_IN_SCRIPT=""
+            for var in $SERVICES_VARS; do
+              if ! echo "$SCRIPT_VARS" | grep -q "^${var}$"; then
+                MISSING_IN_SCRIPT="$MISSING_IN_SCRIPT $var"
+              fi
+            done
+            
+            if [ -z "$MISSING_IN_SCRIPT" ]; then
+              echo "✅ Environment generation script includes all required variables"
+            else
+              echo "❌ Environment generation script missing variables: $MISSING_IN_SCRIPT"
+              echo "Update scripts/deployment/generate-env-file.sh to include all required variables"
+              exit 1
+            fi
+          else
+            echo "❌ Environment generation script not found"
+            exit 1
+          fi
+          
       - name: 'Test Docker Build'
         run: |
           echo "🔨 Testing Docker build..."
@@ -141,6 +171,7 @@ jobs:
           echo "✅ Docker socket configuration"
           echo "✅ Environment variable documentation"
           echo "✅ .cursorrules best practices"
+          echo "✅ Environment generation script validation"
           echo "✅ Docker build test"
           echo "✅ API documentation"
           echo "✅ Documentation consistency" 

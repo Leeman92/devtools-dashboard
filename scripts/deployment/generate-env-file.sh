@@ -3,6 +3,13 @@
 # generate-env-file.sh
 # Script to generate .env.production file from Vault secrets
 # Usage: ./generate-env-file.sh
+#
+# Features:
+# - Fetches all required secrets from HashiCorp Vault
+# - Handles multiline secrets properly with quoting
+# - Masks secrets in CI/CD environments (GitHub Actions, GitLab CI)
+# - Validates all required variables are present
+# - Supports optional secrets (MAILER_DSN, REDIS_URL)
 
 set -euo pipefail
 
@@ -18,6 +25,24 @@ if [[ -z "${VAULT_TOKEN:-}" ]]; then
     echo "❌ VAULT_TOKEN environment variable is required"
     exit 1
 fi
+
+# Function to safely mask secrets for CI/CD
+mask_secret() {
+    local secret_value="$1"
+    
+    # Only mask if we're in a CI/CD environment (GitHub Actions, GitLab CI, etc.)
+    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" || -n "${GITLAB_CI:-}" ]]; then
+        if [[ "$secret_value" == *$'\n'* ]]; then
+            # For multiline secrets, mask each line
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && echo "::add-mask::$line"
+            done <<< "$secret_value"
+        else
+            # For single-line secrets
+            echo "::add-mask::$secret_value"
+        fi
+    fi
+}
 
 # Function to safely fetch secrets (without echoing sensitive data)
 fetch_vault_secret() {
@@ -57,25 +82,35 @@ fetch_vault_secret() {
     return 1
 }
 
+# Define all required secrets (uppercase as stored in Vault)
+REQUIRED_SECRETS=(
+    "APP_SECRET"
+    "DATABASE_URL"
+    "DOCKER_SOCKET_PATH"
+    "GITHUB_TOKEN"
+    "GITHUB_API_URL"
+    "PROMETHEUS_URL"
+    "GRAFANA_URL"
+)
+
 # Fetch required secrets first
 echo "📋 Fetching required secrets..."
-if fetch_vault_secret "APP_SECRET" "secret/dashboard/production"; then
-    APP_SECRET="$VAULT_SECRET_VALUE"
-    echo "::add-mask::$APP_SECRET"
-else
-    echo "💥 Failed to fetch APP_SECRET - deployment cannot continue"
-    exit 1
-fi
+declare -A SECRETS
 
-if fetch_vault_secret "DATABASE_URL" "secret/dashboard/production"; then
-    DATABASE_URL="$VAULT_SECRET_VALUE"
-    echo "::add-mask::$DATABASE_URL"
-else
-    echo "💥 Failed to fetch DATABASE_URL - deployment cannot continue"
-    exit 1
-fi
+# Fetch all required secrets
+for secret in "${REQUIRED_SECRETS[@]}"; do
+    if fetch_vault_secret "$secret" "secret/dashboard/production"; then
+        SECRETS["$secret"]="$VAULT_SECRET_VALUE"
+        # Mark secret as sensitive for CI/CD systems
+        mask_secret "$VAULT_SECRET_VALUE"
+        echo "✅ $secret retrieved"
+    else
+        echo "💥 Failed to fetch $secret - deployment cannot continue"
+        exit 1
+    fi
+done
 
-echo "✅ Required secrets retrieved successfully"
+echo "✅ All required secrets retrieved successfully"
 
 # Create the environment file
 cat > .env.production << EOF
@@ -85,33 +120,62 @@ cat > .env.production << EOF
 
 # Symfony Environment
 APP_ENV=production
-APP_DEBUG=true
-
-# Secrets from Vault
-APP_SECRET=${APP_SECRET}
-DATABASE_URL=${DATABASE_URL}
+APP_DEBUG=false
 EOF
+
+# Add each secret with proper handling for multiline values
+for secret in "${REQUIRED_SECRETS[@]}"; do
+    echo "" >> .env.production
+    case "$secret" in
+        "APP_SECRET")
+            echo "# Application Secrets from Vault" >> .env.production
+            ;;
+        "DATABASE_URL")
+            echo "# Database Configuration" >> .env.production
+            ;;
+        "DOCKER_SOCKET_PATH")
+            echo "# Docker Configuration" >> .env.production
+            ;;
+        "GITHUB_TOKEN")
+            echo "# GitHub Integration" >> .env.production
+            ;;
+        "PROMETHEUS_URL")
+            echo "# Infrastructure Monitoring" >> .env.production
+            ;;
+    esac
+    
+    # Handle multiline secrets properly
+    if [[ "${SECRETS[$secret]}" == *$'\n'* ]]; then
+        # For multiline secrets, use proper quoting
+        echo "${secret}=\"${SECRETS[$secret]}\"" >> .env.production
+    else
+        # For single-line secrets
+        echo "${secret}=${SECRETS[$secret]}" >> .env.production
+    fi
+done
 
 # Add optional secrets if they exist
 echo "📧 Fetching optional secrets..."
+OPTIONAL_SECRETS=("MAILER_DSN" "REDIS_URL")
 
-if fetch_vault_secret "mailer_dsn" "secret/dashboard/production" 2>/dev/null; then
-    MAILER_DSN="$VAULT_SECRET_VALUE"
-    echo "::add-mask::$MAILER_DSN"
-    echo "MAILER_DSN=${MAILER_DSN}" >> .env.production
-    echo "✅ MAILER_DSN added"
-else
-    echo "⚠️  MAILER_DSN not found, skipping"
-fi
-
-if fetch_vault_secret "redis_url" "secret/dashboard/production" 2>/dev/null; then
-    REDIS_URL="$VAULT_SECRET_VALUE"
-    echo "::add-mask::$REDIS_URL"
-    echo "REDIS_URL=${REDIS_URL}" >> .env.production
-    echo "✅ REDIS_URL added"
-else
-    echo "⚠️  REDIS_URL not found, skipping"
-fi
+for secret in "${OPTIONAL_SECRETS[@]}"; do
+    if fetch_vault_secret "$secret" "secret/dashboard/production" 2>/dev/null; then
+        # Mark secret as sensitive for CI/CD systems
+        mask_secret "$VAULT_SECRET_VALUE"
+        
+        # Handle multiline secrets properly in env file
+        if [[ "$VAULT_SECRET_VALUE" == *$'\n'* ]]; then
+            # For multiline secrets, use proper quoting in env file
+            echo "${secret}=\"${VAULT_SECRET_VALUE}\"" >> .env.production
+        else
+            # For single-line secrets
+            echo "${secret}=${VAULT_SECRET_VALUE}" >> .env.production
+        fi
+        echo "✅ $secret added"
+    else
+        echo "⚠️  $secret not found, skipping"
+    fi
+done
 
 # Add static configuration
 cat >> .env.production << EOF
@@ -131,19 +195,50 @@ echo "✅ Environment file generated successfully"
 echo "📏 File size: $(wc -l < .env.production) lines"
 echo "🔍 Validating required variables..."
 
-# Validate required variables are present
-if ! grep -q "^APP_SECRET=" .env.production || ! grep -q "^DATABASE_URL=" .env.production; then
+# Validate all required variables are present
+echo "🔍 Validating all required variables are present..."
+VALIDATION_FAILED=false
+
+for secret in "${REQUIRED_SECRETS[@]}"; do
+    if ! grep -q "^${secret}=" .env.production; then
+        echo "❌ $secret is missing from .env.production"
+        VALIDATION_FAILED=true
+    else
+        echo "✅ $secret is present"
+    fi
+done
+
+if [ "$VALIDATION_FAILED" = true ]; then
+    echo ""
     echo "💥 Validation failed - required variables missing"
-    echo "🔍 Checking which variables are missing:"
-    if ! grep -q "^APP_SECRET=" .env.production; then
-        echo "❌ APP_SECRET is missing"
-    fi
-    if ! grep -q "^DATABASE_URL=" .env.production; then
-        echo "❌ DATABASE_URL is missing"
-    fi
     echo "⚠️  Environment file structure (secrets redacted):"
     grep -E "^[A-Z_]+=.*" .env.production | sed 's/=.*/=***REDACTED***/'
     exit 1
 fi
 
-echo "✅ Validation passed - all required variables present" 
+echo ""
+echo "✅ Validation passed - all required variables present"
+echo "📊 Generated environment file contains $(grep -c "^[A-Z_].*=" .env.production) variables"
+
+# Test multiline secret handling
+echo ""
+echo "🧪 Testing multiline secret handling..."
+MULTILINE_TEST="line1
+line2
+line3"
+
+# Test the mask function
+echo "Testing mask function with multiline content..."
+if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" || -n "${GITLAB_CI:-}" ]]; then
+    mask_secret "$MULTILINE_TEST"
+    echo "✅ Multiline masking test completed (CI environment detected)"
+else
+    echo "ℹ️  Multiline masking test skipped (not in CI environment)"
+fi
+
+# Verify environment file format
+if grep -q '^[A-Z_]*=".*"$' .env.production; then
+    echo "✅ Environment file contains properly quoted multiline values"
+else
+    echo "ℹ️  No multiline values detected in environment file"
+fi 

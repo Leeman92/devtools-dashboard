@@ -284,11 +284,14 @@ try {
 1. Run `./scripts/validate-setup.sh` to check complete setup
 2. Run `./scripts/docker-php.sh validate` to check dependency files
 3. Ensure composer.lock is committed and up-to-date
-4. Test Docker build locally before pushing
-5. Verify all environment variables are documented
-6. Check database migrations are ready with `./scripts/docker-php.sh console doctrine:migrations:status`
-7. Validate API endpoints with proper error handling
-8. **Verify Docker socket access configuration** in docker-compose.yml and docker-stack.yml
-9. **Test Docker API connectivity** with `curl --unix-socket /var/run/docker.sock http://localhost/version`
+4. **Configure all secrets in Vault**: `./scripts/deployment/setup-vault-secrets.sh production`
+5. **Generate and validate environment file**: `./scripts/deployment/generate-env-file.sh`
+6. Test Docker build locally before pushing
+7. Verify all environment variables are documented
+8. Check database migrations are ready with `./scripts/docker-php.sh console doctrine:migrations:status`
+9. Validate API endpoints with proper error handling
+10. **Verify Docker socket access configuration** in docker-compose.yml and docker-stack.yml
+11. **Test Docker API connectivity** with `curl --unix-socket /var/run/docker.sock http://localhost/version`
+12. **Verify environment generation script includes all required variables** from services.yaml
 
 Remember: Always prioritize security, maintainability, and performance in that order. When in doubt, choose the more secure and maintainable solution. **Never deploy with out-of-sync dependency files.** 

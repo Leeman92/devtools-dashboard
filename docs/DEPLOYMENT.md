@@ -185,14 +185,36 @@ Production uses Docker Swarm with multiple nodes for high availability.
 - SSL certificates
 - Monitoring and logging infrastructure
 
+### Vault Setup
+
+Before deployment, configure all required secrets in HashiCorp Vault:
+
+```bash
+# Interactive setup of all required secrets
+./scripts/deployment/setup-vault-secrets.sh production
+
+# Or manually configure secrets
+vault kv put secret/dashboard/production \
+  APP_SECRET="$(openssl rand -hex 32)" \
+  DATABASE_URL="mysql://dashboard_user:secure_password@mariadb:3306/dashboard" \
+  DOCKER_SOCKET_PATH="/var/run/docker.sock" \
+  GITHUB_TOKEN="ghp_your_personal_access_token_here" \
+  GITHUB_API_URL="https://api.github.com" \
+  PROMETHEUS_URL="http://prometheus:9090" \
+  GRAFANA_URL="http://grafana:3000"
+```
+
 ### Pre-deployment Checklist
 
-- [ ] All secrets configured in Vault
+- [ ] All secrets configured in Vault: `./scripts/deployment/setup-vault-secrets.sh production`
+- [ ] Environment file generated and validated: `./scripts/deployment/generate-env-file.sh`
 - [ ] SSL certificates valid and configured
 - [ ] Database migrations tested
+- [ ] Docker socket access configured for production
 - [ ] Backup procedures verified
 - [ ] Monitoring alerts configured
 - [ ] Rollback plan prepared
+- [ ] Pre-commit validation passes: `./.githooks/pre-commit`
 
 ### Deployment Steps
 

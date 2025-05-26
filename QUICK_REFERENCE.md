@@ -98,6 +98,24 @@ docker build -f backend/.docker/Dockerfile --target=development backend/
 docker run -p 8000:80 your-image-name
 ```
 
+### Deployment Operations
+```bash
+# Setup Vault secrets (interactive)
+./scripts/deployment/setup-vault-secrets.sh production
+
+# Generate environment file from Vault
+./scripts/deployment/generate-env-file.sh
+
+# Validate environment file
+grep -c "^[A-Z_].*=" .env.production
+
+# Deploy to staging
+docker stack deploy -c docker-stack.yml devtools-dashboard-staging
+
+# Deploy to production
+docker stack deploy -c docker-stack.yml devtools-dashboard
+```
+
 ## 🐛 Troubleshooting
 
 ### Composer Issues
@@ -198,7 +216,16 @@ GRAFANA_URL="http://localhost:3000"
 
 5. **Before deploying**:
    ```bash
+   # Setup Vault secrets
+   ./scripts/deployment/setup-vault-secrets.sh production
+   
+   # Generate environment file
+   ./scripts/deployment/generate-env-file.sh
+   
+   # Validate everything
    ./scripts/validate-setup.sh
+   
+   # Test Docker build
    docker build -f backend/.docker/Dockerfile backend/
    ```
 

@@ -121,7 +121,35 @@ else
     VALIDATION_FAILED=true
 fi
 
-# 7. Validate that staged files don't break the build
+# 7. Check if environment generation script is up to date
+print_status $YELLOW "🔐 Checking environment generation script..."
+if [ -f "scripts/deployment/generate-env-file.sh" ]; then
+    # Extract required vars from services.yaml
+    SERVICES_VARS=$(grep -o "env([^)]*)" backend/config/services.yaml | sed 's/env(string://' | sed 's/env(//' | sed 's/)$//' | sed 's/default:[^:]*:string://' | sort -u)
+    
+    # Extract vars from generate-env-file.sh
+    SCRIPT_VARS=$(grep -A 20 "REQUIRED_SECRETS=" scripts/deployment/generate-env-file.sh | grep '".*"' | sed 's/.*"\(.*\)".*/\1/' | sort -u)
+    
+    # Check if all services vars are in the script
+    MISSING_IN_SCRIPT=""
+    for var in $SERVICES_VARS; do
+        if ! echo "$SCRIPT_VARS" | grep -q "^${var}$"; then
+            MISSING_IN_SCRIPT="$MISSING_IN_SCRIPT $var"
+        fi
+    done
+    
+    if [ -z "$MISSING_IN_SCRIPT" ]; then
+        print_status $GREEN "✅ Environment generation script includes all required variables"
+    else
+        print_status $RED "❌ Environment generation script missing variables: $MISSING_IN_SCRIPT"
+        echo "Update scripts/deployment/generate-env-file.sh to include all required variables"
+        VALIDATION_FAILED=true
+    fi
+else
+    print_status $YELLOW "⚠️  Environment generation script not found"
+fi
+
+# 8. Validate that staged files don't break the build
 print_status $YELLOW "🔨 Testing Docker build with staged changes..."
 if git diff --cached --name-only | grep -q "backend/"; then
     # Create a temporary commit to test build
@@ -155,6 +183,7 @@ if [ "$VALIDATION_FAILED" = true ]; then
     echo "  - Run: ./scripts/docker-php.sh update"
     echo "  - Update documentation to match configuration"
     echo "  - Ensure Docker socket mounts are configured"
+    echo "  - Update environment generation script with all required variables"
     echo ""
     exit 1
 else
