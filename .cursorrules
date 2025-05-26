@@ -1,0 +1,260 @@
+# Cursor Rules for DevTools Dashboard Project
+
+## Project Context
+This is a Symfony-based dashboard application with Docker containerization, GitHub Actions CI/CD, and HashiCorp Vault integration for secrets management.
+
+## Core Focus Areas
+
+### 1. DevOps Excellence
+- **Infrastructure as Code**: All infrastructure should be version controlled and reproducible
+- **Security First**: Never hardcode secrets, always use Vault or environment variables
+- **Container Best Practices**: Multi-stage builds, minimal base images, proper layer caching
+- **CI/CD Pipeline**: Robust error handling, proper testing stages, rollback capabilities
+- **Monitoring & Observability**: Include health checks, logging, and metrics in all services
+
+#### DevOps Guidelines:
+- Use semantic versioning for releases
+- Implement proper Docker layer caching strategies
+- Always validate configurations before deployment
+- Use environment-specific configurations
+- Implement proper backup and disaster recovery procedures
+- Follow the principle of least privilege for all access controls
+
+### 2. Senior PHP Development
+- **Modern PHP Standards**: Use PHP 8.4+ features, strict typing, and modern syntax
+- **Symfony Best Practices**: Follow Symfony conventions, use dependency injection, leverage the service container
+- **Code Quality**: PSR-12 coding standards, comprehensive testing, static analysis
+- **Performance**: Optimize for production, use OPcache, implement proper caching strategies
+- **Security**: Input validation, output escaping, CSRF protection, secure session handling
+
+#### PHP Development Guidelines:
+- Always use strict types: `declare(strict_types=1);`
+- Implement proper error handling with typed exceptions
+- Use dependency injection over static calls
+- Write comprehensive PHPDoc comments
+- Implement proper logging with structured data
+- Use readonly properties and enums where appropriate
+- Follow SOLID principles and clean architecture patterns
+
+### 3. Project-Specific Standards
+
+#### File Structure:
+```
+backend/
+├── .docker/           # Docker configuration
+├── src/              # Application source code
+├── config/           # Symfony configuration
+├── public/           # Web root
+├── var/              # Cache, logs, sessions
+└── tests/            # Test suites
+
+.github/workflows/    # CI/CD pipelines
+scripts/             # Utility scripts
+docker-stack.yml     # Docker Swarm configuration
+```
+
+#### Naming Conventions:
+- **Classes**: PascalCase (e.g., `UserController`, `DatabaseService`)
+- **Methods**: camelCase (e.g., `getUserById`, `validateInput`)
+- **Constants**: SCREAMING_SNAKE_CASE (e.g., `MAX_RETRY_ATTEMPTS`)
+- **Environment Variables**: SCREAMING_SNAKE_CASE (e.g., `VAULT_ADDR`, `DATABASE_URL`)
+- **Docker Images**: kebab-case with registry prefix (e.g., `harbor.patricklehmann.dev/dashboard/dashboard`)
+
+## Code Standards
+
+### PHP Code Requirements:
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller;
+
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
+
+/**
+ * Dashboard controller for handling main application routes.
+ */
+final class DashboardController extends AbstractController
+{
+    public function __construct(
+        private readonly SomeService $service,
+    ) {}
+
+    #[Route('/api/dashboard', name: 'api_dashboard', methods: ['GET'])]
+    public function index(Request $request): JsonResponse
+    {
+        // Implementation
+    }
+}
+```
+
+### Docker Best Practices:
+- Use multi-stage builds for production optimization
+- Implement proper health checks
+- Use non-root users for security
+- Optimize layer caching with proper COPY order
+- Include security scanning in CI/CD
+
+### GitHub Actions Standards:
+- Use specific action versions (not @main or @latest)
+- Implement proper secret management with Vault
+- Include comprehensive error handling
+- Use job dependencies and outputs properly
+- Implement proper caching strategies
+
+## Security Requirements
+
+### Secrets Management:
+- **Never commit secrets** to version control
+- Use HashiCorp Vault for all sensitive data
+- Rotate secrets regularly
+- Use environment-specific secret paths
+- Implement proper RBAC for Vault access
+
+### Container Security:
+- Use minimal base images (Alpine when possible)
+- Run containers as non-root users
+- Implement proper network segmentation
+- Regular security updates and vulnerability scanning
+- Use read-only filesystems where possible
+
+### Application Security:
+- Validate all inputs with Symfony validators
+- Use CSRF tokens for state-changing operations
+- Implement proper authentication and authorization
+- Use HTTPS everywhere
+- Implement rate limiting and request throttling
+
+## Testing Standards
+
+### Required Test Coverage:
+- **Unit Tests**: All business logic and services
+- **Integration Tests**: API endpoints and database interactions
+- **Functional Tests**: Complete user workflows
+- **Security Tests**: Authentication, authorization, input validation
+
+### Test Structure:
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Unit\Service;
+
+use PHPUnit\Framework\TestCase;
+use App\Service\SomeService;
+
+final class SomeServiceTest extends TestCase
+{
+    private SomeService $service;
+
+    protected function setUp(): void
+    {
+        $this->service = new SomeService();
+    }
+
+    public function testSomeMethod(): void
+    {
+        // Arrange
+        $input = 'test-input';
+        
+        // Act
+        $result = $this->service->someMethod($input);
+        
+        // Assert
+        $this->assertSame('expected-output', $result);
+    }
+}
+```
+
+## Deployment Standards
+
+### Environment Configuration:
+- **Development**: Local Docker Compose setup
+- **Staging**: Mirror production environment
+- **Production**: Docker Swarm with high availability
+
+### Deployment Process:
+1. Code review and approval required
+2. Automated testing must pass
+3. Security scanning must pass
+4. Staging deployment and validation
+5. Production deployment with rollback capability
+
+### Monitoring Requirements:
+- Application health checks
+- Performance metrics collection
+- Error tracking and alerting
+- Log aggregation and analysis
+- Infrastructure monitoring
+
+## Documentation Standards
+
+### Code Documentation:
+- All public methods must have PHPDoc comments
+- Complex business logic requires inline comments
+- API endpoints must be documented with OpenAPI/Swagger
+- Database schema changes require migration documentation
+
+### Operational Documentation:
+- Deployment procedures
+- Troubleshooting guides
+- Security procedures
+- Backup and recovery procedures
+
+## Performance Standards
+
+### Application Performance:
+- Response times under 200ms for API endpoints
+- Database queries optimized with proper indexing
+- Implement caching strategies (Redis/Memcached)
+- Use Symfony profiler for performance analysis
+
+### Infrastructure Performance:
+- Container resource limits properly configured
+- Load balancing for high availability
+- CDN for static assets
+- Database connection pooling
+
+## Error Handling
+
+### Application Errors:
+```php
+try {
+    // Risky operation
+} catch (SpecificException $e) {
+    $this->logger->error('Specific error occurred', [
+        'exception' => $e->getMessage(),
+        'context' => $context,
+    ]);
+    
+    throw new DomainException('User-friendly message', 0, $e);
+}
+```
+
+### Infrastructure Errors:
+- Implement circuit breakers for external services
+- Graceful degradation for non-critical features
+- Proper retry mechanisms with exponential backoff
+- Comprehensive logging for debugging
+
+## Maintenance Standards
+
+### Regular Tasks:
+- Security updates monthly
+- Dependency updates quarterly
+- Performance reviews quarterly
+- Documentation updates with each release
+- Backup testing monthly
+
+### Code Maintenance:
+- Refactor code with high cyclomatic complexity
+- Remove deprecated code and dependencies
+- Update coding standards as PHP evolves
+- Regular code quality audits
+
+Remember: Always prioritize security, maintainability, and performance in that order. When in doubt, choose the more secure and maintainable solution. 

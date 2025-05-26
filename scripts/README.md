@@ -29,6 +29,10 @@ Updates the Vault version in your GitHub Actions workflow.
 
 Checks the Vault version and status on your deployment server.
 
+### `test-docker-build.sh`
+
+Tests Docker builds locally to debug issues before pushing to CI/CD.
+
 **Usage:**
 ```bash
 # Set your server details
@@ -48,6 +52,21 @@ export SERVER_USER=patrick
 - Docker installation and status
 - Docker Swarm status
 
+**Usage:**
+```bash
+# Test production build (default)
+./scripts/test-docker-build.sh
+
+# Test development build
+./scripts/test-docker-build.sh development
+```
+
+**What it does:**
+- Builds the Docker image locally with verbose output
+- Tests the built image by running PHP and Composer
+- Shows image details and size
+- Provides cleanup instructions
+
 ## Quick Start
 
 1. **Check your current server Vault version:**
@@ -61,7 +80,12 @@ export SERVER_USER=patrick
    ./scripts/update-vault-version.sh 1.19.4
    ```
 
-3. **Commit and push the changes:**
+3. **Test Docker build locally (optional but recommended):**
+   ```bash
+   ./scripts/test-docker-build.sh
+   ```
+
+4. **Commit and push the changes:**
    ```bash
    git add .github/workflows/deploy.yml
    git commit -m "Update Vault to version 1.19.4"

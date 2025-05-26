@@ -32,6 +32,10 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+
+      - name: Prepare cache directory
+        run: |
+          mkdir -p /tmp/.buildx-cache
       
       - name: Install Vault CLI
         run: |
@@ -99,12 +103,14 @@ jobs:
           push: true
           tags: harbor.patricklehmann.dev/dashboard/dashboard:latest
           cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
       - name: Move cache
         run: |
           rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          if [ -d /tmp/.buildx-cache-new ]; then
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          fi
 
   deploy:
     runs-on: ubuntu-latest

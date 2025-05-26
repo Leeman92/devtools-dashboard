@@ -5,20 +5,38 @@ ARG USERNAME=backend
 ARG UID=1000
 ARG GID=1000
 
+# Install system dependencies and PHP extensions
+RUN apk add --no-cache \
+    git \
+    unzip \
+    && docker-php-ext-install \
+    pdo \
+    opcache
+
 # Create group and user with the same UID/GID as the host user
 RUN addgroup -g $GID $USERNAME \
  && adduser -D -u $UID -G $USERNAME $USERNAME
- 
+
+# Install Composer
+COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
+
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock symfony.lock ./
+
+# Install dependencies as root first, then change ownership
+RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
+
 COPY . .
+
+# Fix ownership of all files
+RUN chown -R $USERNAME:$USERNAME /app
+
+# Complete composer installation
+RUN composer dump-autoload --optimize
 
 COPY .docker/caddy/Caddyfile /etc/caddy/Caddyfile
 
-RUN chown -R $USERNAME:$USERNAME .
-
 USER $USERNAME
-
-
-COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 
 FROM base AS development
 
@@ -27,14 +45,20 @@ USER root
 RUN apk add --no-cache \
     bash
 
+# Install dev dependencies
+RUN composer install --optimize-autoloader
+
 USER $USERNAME
-
-RUN pwd && ls -ltr && composer install --optimize-autoloader
-
-USER root
 
 FROM base AS production
 
-USER $USERNAME
-RUN composer install -vvv
+# Re-declare ARGs for this stage
+ARG USERNAME=backend
+ARG UID=1000
+ARG GID=1000
+
+# Production is already optimized in base stage
+# Just ensure proper permissions
 USER root
+RUN chown -R $USERNAME:$USERNAME /app
+USER $USERNAME
