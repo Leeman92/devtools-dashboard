@@ -74,12 +74,22 @@ fetch_secret() {
     
     echo "  Fetching ${key}..."
     
-    if value=$(vault kv get -field="$vault_key" "$VAULT_PATH" 2>/dev/null); then
-        echo "${key}=${value}" >> "$ENV_FILE"
+    # Capture both stdout and stderr
+    local vault_output
+    local vault_exit_code
+    
+    vault_output=$(vault kv get -field="$vault_key" "$VAULT_PATH" 2>&1)
+    vault_exit_code=$?
+    
+    if [ $vault_exit_code -eq 0 ] && [ -n "$vault_output" ] && [ "$vault_output" != "null" ]; then
+        echo "${key}=${vault_output}" >> "$ENV_FILE"
         echo "    ✅ ${key} retrieved"
     else
+        echo "    ❌ Failed to retrieve ${vault_key} from ${VAULT_PATH}"
+        echo "    Error: $vault_output"
+        
         if [ "$required" = "true" ]; then
-            echo "    ❌ Required secret ${vault_key} not found in ${VAULT_PATH}"
+            echo "    💥 Required secret ${vault_key} not found - aborting"
             return 1
         else
             echo "    ⚠️  Optional secret ${vault_key} not found, skipping"

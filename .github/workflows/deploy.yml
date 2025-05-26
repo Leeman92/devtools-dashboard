@@ -179,6 +179,38 @@ jobs:
           
           echo "🔐 Generating .env.production from Vault secrets..."
           
+          # Function to safely fetch secrets
+          fetch_vault_secret() {
+            local field="$1"
+            local path="$2"
+            local output
+            
+            output=$(vault kv get -field="$field" "$path" 2>&1)
+            if [ $? -eq 0 ] && [ -n "$output" ] && [ "$output" != "null" ]; then
+              echo "$output"
+              return 0
+            else
+              echo "❌ Failed to fetch $field from $path: $output" >&2
+              return 1
+            fi
+          }
+          
+          # Fetch required secrets first
+          echo "📋 Fetching required secrets..."
+          APP_SECRET=$(fetch_vault_secret "app_secret" "secret/dashboard/production")
+          if [ $? -ne 0 ]; then
+            echo "💥 Failed to fetch APP_SECRET - deployment cannot continue"
+            exit 1
+          fi
+          
+          DATABASE_URL=$(fetch_vault_secret "database_url" "secret/dashboard/production")
+          if [ $? -ne 0 ]; then
+            echo "💥 Failed to fetch DATABASE_URL - deployment cannot continue"
+            exit 1
+          fi
+          
+          echo "✅ Required secrets retrieved successfully"
+          
           # Create the environment file
           cat > .env.production << EOF
           # Environment file generated from HashiCorp Vault
@@ -190,19 +222,25 @@ jobs:
           APP_DEBUG=false
           
           # Secrets from Vault
-          APP_SECRET=$(vault kv get -field=app_secret secret/dashboard/production)
-          DATABASE_URL=$(vault kv get -field=database_url secret/dashboard/production)
-          
-          # Optional secrets (with fallbacks)
+          APP_SECRET=${APP_SECRET}
+          DATABASE_URL=${DATABASE_URL}
           EOF
           
           # Add optional secrets if they exist
-          if vault kv get -field=mailer_dsn secret/dashboard/production >/dev/null 2>&1; then
-            echo "MAILER_DSN=$(vault kv get -field=mailer_dsn secret/dashboard/production)" >> .env.production
+          echo "📧 Fetching optional secrets..."
+          
+          if MAILER_DSN=$(fetch_vault_secret "mailer_dsn" "secret/dashboard/production" 2>/dev/null); then
+            echo "MAILER_DSN=${MAILER_DSN}" >> .env.production
+            echo "✅ MAILER_DSN added"
+          else
+            echo "⚠️  MAILER_DSN not found, skipping"
           fi
           
-          if vault kv get -field=redis_url secret/dashboard/production >/dev/null 2>&1; then
-            echo "REDIS_URL=$(vault kv get -field=redis_url secret/dashboard/production)" >> .env.production
+          if REDIS_URL=$(fetch_vault_secret "redis_url" "secret/dashboard/production" 2>/dev/null); then
+            echo "REDIS_URL=${REDIS_URL}" >> .env.production
+            echo "✅ REDIS_URL added"
+          else
+            echo "⚠️  REDIS_URL not found, skipping"
           fi
           
           # Add static configuration
@@ -218,8 +256,20 @@ jobs:
           LOG_CHANNEL=stderr
           EOF
           
-          echo "✅ Environment file generated"
+          echo ""
+          echo "✅ Environment file generated successfully"
           echo "📏 File size: $(wc -l < .env.production) lines"
+          echo "🔍 Validating required variables..."
+          
+          # Validate required variables are present
+          if ! grep -q "^APP_SECRET=" .env.production || ! grep -q "^DATABASE_URL=" .env.production; then
+            echo "💥 Validation failed - required variables missing"
+            echo "Generated file contents:"
+            cat .env.production
+            exit 1
+          fi
+          
+          echo "✅ Validation passed - all required variables present"
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
