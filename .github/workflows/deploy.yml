@@ -33,19 +33,8 @@ jobs:
               url: process.env.ACTIONS_ID_TOKEN_REQUEST_URL
             }
 
-      - name: Authenticate with Vault via OIDC
-        id: vault-auth
-        run: |
-          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
-
-          JWT=$(curl -s -H "Authorization: bearer ${{ steps.generate_token.outputs.token }}" \
-            "${{ steps.generate_token.outputs.url }}" | jq -r '.value')
-
-          VAULT_TOKEN=$(echo "{\"jwt\": \"$JWT\", \"role\": \"github-actions\"}" | \
-            curl -s --request POST --data @- "$VAULT_ADDR/v1/auth/jwt/login" | jq -r '.auth.client_token')
-
-          echo "::add-mask::$VAULT_TOKEN"
-          echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV
+      - name: TEMP DEBUG – Print GitHub OIDC JWT
+        run: echo "${{ steps.generate_token.outputs.token }}"
 
       - name: Read secrets from Vault
         run: |
