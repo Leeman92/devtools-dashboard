@@ -11,9 +11,12 @@ RUN apk add --no-cache \
     git \
     unzip \
     bash \
+    mysql-dev \
     && docker-php-ext-install \
     pdo \
-    opcache 
+    pdo_mysql \
+    opcache \
+    && php -m | grep pdo_mysql 
 
 # Create group and user with the same UID/GID as the host user
 RUN addgroup -g $GID $USERNAME \

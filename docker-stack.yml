@@ -65,6 +65,56 @@ services:
       - "com.docker.stack.namespace=dashboard"
       - "com.docker.stack.maintainer=Patrick Lehmann"
       - "com.docker.stack.version=1.0.0"
+    depends_on:
+      - database
+
+  database:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: dashboard
+      MYSQL_USER: dashboard
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - database_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    networks:
+      - dashboard-network
+    secrets:
+      - db_root_password
+      - db_password
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.docker.stack.description=Dashboard Database"
+      - "com.docker.stack.namespace=dashboard"
+
+volumes:
+  database_data:
+    driver: local
+    labels:
+      - "com.docker.stack.description=Dashboard Database Data"
+      - "com.docker.stack.namespace=dashboard"
 
 networks:
   dashboard-network:
@@ -75,6 +125,12 @@ networks:
     labels:
       - "com.docker.stack.description=Dashboard Network"
       - "com.docker.stack.namespace=dashboard"
+
+secrets:
+  db_root_password:
+    external: true
+  db_password:
+    external: true
 
 configs:
   dashboard_env:

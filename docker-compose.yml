@@ -5,7 +5,7 @@ services:
       dockerfile: .docker/Dockerfile
       target: development
       args:
-        DOCKER_GID: ${DOCKER_GID:-999}
+        DOCKER_GID: ${DOCKER_GID:-962}
     # map your source code into the container
     volumes:
       - ./backend:/app
@@ -20,3 +20,22 @@ services:
     environment:
       APP_ENV: dev
       DOCKER_SOCKET_PATH: /var/run/docker.sock
+      DATABASE_URL: mysql://dashboard:dashboard_password@database/dashboard?serverVersion=10.11.2-MariaDB&charset=utf8mb4
+    depends_on:
+      - database
+
+  database:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: dashboard
+      MYSQL_USER: dashboard
+      MYSQL_PASSWORD: dashboard_password
+    volumes:
+      - database_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  database_data:

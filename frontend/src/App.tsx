@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-// import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { AuthProvider } from '@/hooks/useAuth'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { UserProfile } from '@/components/auth/UserProfile'
+import { api } from '@/lib/api'
 import { 
   Container, 
   GitBranch,
@@ -22,7 +24,7 @@ interface DockerContainer {
   created: string
 }
 
-function App() {
+function Dashboard() {
   const [containers, setContainers] = useState<DockerContainer[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -31,11 +33,11 @@ function App() {
     // Fetch containers from the API
     const fetchContainers = async () => {
       try {
-        const response = await fetch('/api/docker/containers')
-        const data = await response.json()
+        const data = await api.docker.containers()
         setContainers(data.containers || [])
       } catch (error) {
         console.error('Failed to fetch containers:', error)
+        // Don't set containers to empty array on error, keep previous data
       } finally {
         setLoading(false)
       }
@@ -128,12 +130,7 @@ function App() {
               </Button>
 
               {/* User Profile */}
-              <div className="flex items-center space-x-3">
-                <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-gray-700">PL</span>
-                </div>
-                <span className="text-sm font-medium">Patrick</span>
-              </div>
+              <UserProfile />
             </div>
           </div>
         </header>
@@ -206,7 +203,7 @@ function App() {
                           <div>Image</div>
                           <div>Status</div>
                         </div>
-                        {containers.slice(0, 4).map((container) => (
+                        {containers.map((container) => (
                           <div key={container.id} className="grid grid-cols-3 gap-4 items-center py-2">
                             <div className="font-medium text-gray-900">
                               {container.name.replace(/^\//, '')}
@@ -349,6 +346,16 @@ function App() {
         </main>
       </div>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    </AuthProvider>
   )
 }
 
