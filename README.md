@@ -22,11 +22,12 @@ A full-stack web application for monitoring Docker containers and CI jobs with H
 - HashiCorp Vault for secrets management
 
 ### Frontend
-- React
-- Vite
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
+- React 18 with TypeScript
+- Vite 6.3.5 for fast development and optimized builds
+- Tailwind CSS v3.4.0 with utility-first styling
+- shadcn/ui components for accessible, modern UI
+- Lucide React icons for consistent iconography
+- Responsive design with mobile-first approach
 
 ### Infrastructure
 - Docker & Docker Compose
@@ -38,10 +39,10 @@ A full-stack web application for monitoring Docker containers and CI jobs with H
 ## Prerequisites
 
 - Docker and Docker Compose
-- Node.js 20+
-- PHP 8.4+
 - Git
 - HashiCorp Vault (for production)
+
+**Note**: No local PHP, Node.js, or npm installation required! All development operations use Docker containers.
 
 ## Quick Start
 
@@ -55,6 +56,7 @@ cd devtools-dashboard
 ```bash
 # Backend
 cp backend/.env.example backend/.env
+# Frontend environment variables are handled via Vite proxy configuration
 ```
 
 3. Start the full development environment:
@@ -149,7 +151,8 @@ devtools-dashboard/
 - [Docker Socket Access Guide](DOCKER_SOCKET_ACCESS.md) - Docker integration configuration and troubleshooting
 - [Vault Setup Guide](docs/vault-setup.md) - HashiCorp Vault configuration
 - [Vault Secrets Template](docs/vault-secrets-template.md) - Secrets management template
-- [Project Rules](.cursorrules) - Coding standards and best practices
+- [Project Rules](.cursorrules) - Full-stack coding standards and best practices
+- [TODO & Status](TODO.md) - Current project status and roadmap
 
 ## Security
 
@@ -189,11 +192,14 @@ See the [deployment documentation](docs/vault-setup.md) for detailed production 
 
 ## Contributing
 
-1. Follow the coding standards defined in `.cursorrules`
-2. Use semantic versioning for releases
-3. All code must pass tests and security scans
-4. Secrets must be managed through Vault
-5. Follow the DevOps best practices outlined in the project rules
+1. Follow the full-stack coding standards defined in `.cursorrules`
+2. Use Docker-based development workflow (no local dependencies required)
+3. Use semantic versioning for releases
+4. All code must pass tests and security scans (both backend and frontend)
+5. Secrets must be managed through Vault
+6. Follow the DevOps and frontend best practices outlined in the project rules
+7. Ensure TypeScript strict mode compliance and accessibility standards
+8. Test responsive design on multiple screen sizes
 
 ## License
 

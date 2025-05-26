@@ -36,6 +36,22 @@ This is a Symfony-based dashboard application with Docker containerization, GitH
 - Use readonly properties and enums where appropriate
 - Follow SOLID principles and clean architecture patterns
 
+### 3. Modern Frontend Development
+- **React & TypeScript**: Use React 18+ with strict TypeScript, functional components, and hooks
+- **Modern Build Tools**: Vite for fast development and optimized production builds
+- **Component Architecture**: Reusable, accessible components with proper prop typing
+- **State Management**: React hooks for local state, Zustand/Redux Toolkit for global state
+- **Styling**: Tailwind CSS utility-first approach with consistent design system
+
+#### Frontend Development Guidelines:
+- Always use TypeScript with strict mode enabled
+- Implement proper component composition and reusability
+- Use semantic HTML and ARIA attributes for accessibility
+- Follow React best practices (keys, effects, memoization)
+- Implement proper error boundaries and loading states
+- Use modern CSS features and responsive design principles
+- Optimize for performance (code splitting, lazy loading, bundle analysis)
+
 ### Dependency Management:
 - **Never manually edit composer.json without updating composer.lock**
 - Always run `./scripts/docker-php.sh update` after modifying composer.json
@@ -46,12 +62,24 @@ This is a Symfony-based dashboard application with Docker containerization, GitH
 
 ### Docker-First Development:
 - **No local PHP/Composer required** - all operations use Docker containers
-- Use `./scripts/docker-php.sh` wrapper for simplified commands
+- **No local Node.js/npm required** - all frontend operations use Docker containers
+- Use `./scripts/docker-php.sh` wrapper for backend commands
+- Use `./scripts/docker-node.sh` wrapper for frontend commands
+- Use `./scripts/dev.sh` for full-stack development environment
 - Use `./scripts/validate-setup.sh` for comprehensive environment validation
 - All database operations through Docker with `--network host` for connectivity
 - Development workflow: validate → install → configure → migrate → test
 
-### 3. Project-Specific Standards
+### Frontend Dependency Management:
+- **Never manually edit package.json without updating package-lock.json**
+- Always run `./scripts/docker-node.sh install` after modifying package.json
+- Use `./scripts/docker-node.sh add <package>` for adding dependencies
+- Use `./scripts/docker-node.sh add-dev <package>` for dev dependencies
+- Keep package-lock.json in version control for reproducible builds
+- Use specific version constraints in package.json (avoid `*` or `latest`)
+- **Use Docker for all Node.js/npm operations** - no local installation required
+
+### 4. Project-Specific Standards
 
 #### File Structure:
 ```
@@ -63,9 +91,19 @@ backend/
 ├── var/              # Cache, logs, sessions
 └── tests/            # Test suites
 
+frontend/
+├── src/              # React application source
+│   ├── components/   # Reusable UI components
+│   ├── hooks/        # Custom React hooks
+│   ├── lib/          # Utility functions
+│   └── types/        # TypeScript definitions
+├── public/           # Static assets
+└── dist/             # Production build output
+
 .github/workflows/    # CI/CD pipelines
 scripts/             # Utility scripts
 docker-stack.yml     # Docker Swarm configuration
+docker-compose.yml   # Development environment
 ```
 
 #### Naming Conventions:
@@ -107,6 +145,89 @@ final class DashboardController extends AbstractController
 }
 ```
 
+### React/TypeScript Code Requirements:
+```tsx
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface DashboardProps {
+  title: string;
+  refreshInterval?: number;
+}
+
+interface ContainerData {
+  id: string;
+  name: string;
+  status: 'running' | 'stopped' | 'error';
+  image: string;
+}
+
+/**
+ * Dashboard component for displaying container status and metrics.
+ */
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  title, 
+  refreshInterval = 5000 
+}) => {
+  const [containers, setContainers] = useState<ContainerData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchContainers = async (): Promise<void> => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/docker/containers');
+        if (!response.ok) throw new Error('Failed to fetch containers');
+        
+        const data = await response.json();
+        setContainers(data.containers);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContainers();
+    const interval = setInterval(fetchContainers, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div className="p-6 space-y-6">
+      <h1 className="text-3xl font-bold">{title}</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {containers.map((container) => (
+          <Card key={container.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                {container.name}
+                <span className={`px-2 py-1 rounded text-sm ${
+                  container.status === 'running' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {container.status}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">{container.image}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
 ### Docker Best Practices:
 - Use multi-stage builds for production optimization
 - Implement proper health checks
@@ -114,11 +235,23 @@ final class DashboardController extends AbstractController
 - Optimize layer caching with proper COPY order
 - Include security scanning in CI/CD
 - **Always ensure composer.lock is up-to-date before Docker builds**
-- Copy composer files before source code for better layer caching
+- **Always ensure package-lock.json is up-to-date before Docker builds**
+- Copy dependency files before source code for better layer caching
 - Use `./scripts/docker-php.sh validate` in CI/CD pipeline before building images
+- Use `./scripts/docker-node.sh build` for frontend production builds
 - **Use Docker for all development operations** - eliminates local dependency requirements
 - **Mount Docker socket read-only** for monitoring: `/var/run/docker.sock:/var/run/docker.sock:ro`
 - **Use manager node constraints** in Swarm for Docker API access: `node.role == manager`
+
+### Frontend Build Practices:
+- Use Vite for fast development and optimized production builds
+- Implement proper code splitting and lazy loading
+- Optimize bundle size with tree shaking and minification
+- Use environment variables for API endpoints and configuration
+- Implement proper error boundaries and loading states
+- Use TypeScript strict mode for better type safety
+- Follow accessibility guidelines (WCAG 2.1 AA)
+- Implement responsive design with mobile-first approach
 
 ### GitHub Actions Standards:
 - Use specific action versions (not @main or @latest)
@@ -267,31 +400,43 @@ try {
 
 ### Regular Tasks:
 - Security updates monthly
-- Dependency updates quarterly using `./scripts/docker-php.sh update`
+- Backend dependency updates quarterly using `./scripts/docker-php.sh update`
+- Frontend dependency updates quarterly using `./scripts/docker-node.sh update`
 - Performance reviews quarterly
 - Documentation updates with each release
 - Backup testing monthly
 - **Composer validation in CI/CD pipeline** using `./scripts/docker-php.sh validate`
+- **Package.json validation in CI/CD pipeline** using `./scripts/docker-node.sh audit`
 
 ### Code Maintenance:
 - Refactor code with high cyclomatic complexity
 - Remove deprecated code and dependencies using `./scripts/docker-php.sh composer remove`
-- Update coding standards as PHP evolves
+- Remove unused frontend packages using `./scripts/docker-node.sh remove <package>`
+- Update coding standards as PHP and TypeScript evolve
 - Regular code quality audits using `./scripts/docker-php.sh console lint:container`
+- Frontend code quality audits using `./scripts/docker-node.sh lint`
 - **Validate composer.json/composer.lock sync before releases** using `./scripts/validate-setup.sh`
+- **Validate package.json/package-lock.json sync before releases**
+- Bundle size analysis and optimization using `./scripts/docker-node.sh analyze`
 
 ### Pre-Deployment Checklist:
 1. Run `./scripts/validate-setup.sh` to check complete setup
-2. Run `./scripts/docker-php.sh validate` to check dependency files
-3. Ensure composer.lock is committed and up-to-date
-4. **Configure all secrets in Vault**: `./scripts/deployment/setup-vault-secrets.sh production`
-5. **Generate and validate environment file**: `./scripts/deployment/generate-env-file.sh`
-6. Test Docker build locally before pushing
-7. Verify all environment variables are documented
-8. Check database migrations are ready with `./scripts/docker-php.sh console doctrine:migrations:status`
-9. Validate API endpoints with proper error handling
-10. **Verify Docker socket access configuration** in docker-compose.yml and docker-stack.yml
-11. **Test Docker API connectivity** with `curl --unix-socket /var/run/docker.sock http://localhost/version`
-12. **Verify environment generation script includes all required variables** from services.yaml
+2. Run `./scripts/docker-php.sh validate` to check backend dependency files
+3. Run `./scripts/docker-node.sh audit` to check frontend dependencies for vulnerabilities
+4. Ensure composer.lock and package-lock.json are committed and up-to-date
+5. **Configure all secrets in Vault**: `./scripts/deployment/setup-vault-secrets.sh production`
+6. **Generate and validate environment file**: `./scripts/deployment/generate-env-file.sh`
+7. Test Docker build locally before pushing (both backend and frontend)
+8. Run `./scripts/docker-node.sh build` to verify frontend production build
+9. Verify all environment variables are documented
+10. Check database migrations are ready with `./scripts/docker-php.sh console doctrine:migrations:status`
+11. Validate API endpoints with proper error handling
+12. Test frontend-backend integration with `./scripts/dev.sh`
+13. **Verify Docker socket access configuration** in docker-compose.yml and docker-stack.yml
+14. **Test Docker API connectivity** with `curl --unix-socket /var/run/docker.sock http://localhost/version`
+15. **Verify environment generation script includes all required variables** from services.yaml
+16. **Check bundle size and performance** with `./scripts/docker-node.sh analyze`
+17. **Validate TypeScript compilation** with no errors or warnings
+18. **Test responsive design** on multiple screen sizes
 
-Remember: Always prioritize security, maintainability, and performance in that order. When in doubt, choose the more secure and maintainable solution. **Never deploy with out-of-sync dependency files.** 
+Remember: Always prioritize security, maintainability, and performance in that order. When in doubt, choose the more secure and maintainable solution. **Never deploy with out-of-sync dependency files.** **Always test full-stack integration before deployment.** 
