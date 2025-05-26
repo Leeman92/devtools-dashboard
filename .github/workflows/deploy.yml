@@ -68,11 +68,8 @@ jobs:
           echo "Fetching secrets from Vault..."
           echo "SERVER_IP=$(vault kv get -field=SERVER_IP ci/github)" >> $GITHUB_ENV
           echo "SERVER_PORT=$(vault kv get -field=SERVER_PORT ci/github)" >> $GITHUB_ENV
-          {
-            echo "SSH_PRIVATE_KEY<<__EOT__"
-            vault kv get -field=SSH_PRIVATE_KEY ci/github
-            echo "__EOT__"
-          } >> "$GITHUB_ENV"
+          printf "SSH_PRIVATE_KEY<<__EOT__\n%s\n__EOT__\n" "$(vault kv get -field=SSH_PRIVATE_KEY ci/github)" >> "$GITHUB_ENV"
+
       - name: Verify secrets
         run: |
           echo "SERVER_IP=$SERVER_IP"
