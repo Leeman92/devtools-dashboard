@@ -117,6 +117,8 @@ final class DashboardController extends AbstractController
 - Copy composer files before source code for better layer caching
 - Use `./scripts/docker-php.sh validate` in CI/CD pipeline before building images
 - **Use Docker for all development operations** - eliminates local dependency requirements
+- **Mount Docker socket read-only** for monitoring: `/var/run/docker.sock:/var/run/docker.sock:ro`
+- **Use manager node constraints** in Swarm for Docker API access: `node.role == manager`
 
 ### GitHub Actions Standards:
 - Use specific action versions (not @main or @latest)
@@ -286,5 +288,7 @@ try {
 5. Verify all environment variables are documented
 6. Check database migrations are ready with `./scripts/docker-php.sh console doctrine:migrations:status`
 7. Validate API endpoints with proper error handling
+8. **Verify Docker socket access configuration** in docker-compose.yml and docker-stack.yml
+9. **Test Docker API connectivity** with `curl --unix-socket /var/run/docker.sock http://localhost/version`
 
 Remember: Always prioritize security, maintainability, and performance in that order. When in doubt, choose the more secure and maintainable solution. **Never deploy with out-of-sync dependency files.** 

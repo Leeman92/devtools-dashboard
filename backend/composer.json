@@ -1,4 +1,6 @@
 {
+    "name": "patricklehmann/devtools-dashboard",
+    "description": "A comprehensive Symfony-based API for monitoring Docker services, CI/CD pipelines, and infrastructure metrics",
     "type": "project",
     "license": "proprietary",
     "minimum-stability": "stable",
@@ -12,7 +14,7 @@
         "doctrine/doctrine-bundle": "^2.14",
         "doctrine/doctrine-migrations-bundle": "^3.4.2",
         "doctrine/orm": "^3.3.3",
-        "runtime/frankenphp-symfony": ">=0.2",
+        "runtime/frankenphp-symfony": "^0.2",
         "symfony/console": "7.2.*",
         "symfony/dotenv": "7.2.*",
         "symfony/flex": "^2.7",

@@ -3,20 +3,23 @@
 ## 🚀 Quick Start
 
 ```bash
-# 1. Validate setup
+# 1. Setup Git hooks (for automatic validation)
+./scripts/setup-git-hooks.sh
+
+# 2. Validate setup
 ./scripts/validate-setup.sh
 
-# 2. Install dependencies (using Docker wrapper)
+# 3. Install dependencies (using Docker wrapper)
 ./scripts/docker-php.sh install
 
-# 3. Configure environment
+# 4. Configure environment
 # Create backend/.env with your values (see documentation for required variables)
 
-# 4. Setup database (using Docker wrapper)
+# 5. Setup database (using Docker wrapper)
 ./scripts/docker-php.sh create-db
 ./scripts/docker-php.sh migrate
 
-# 5. Test the application (using Docker wrapper)
+# 6. Test the application (using Docker wrapper)
 ./scripts/docker-php.sh collect-metrics
 ```
 
@@ -109,7 +112,9 @@ docker run -p 8000:80 your-image-name
 |---------|----------|
 | Permission denied | Check user/group in Dockerfile |
 | Build cache issues | `docker build --no-cache` |
-| Socket access denied | Ensure Docker socket is mounted |
+| Socket access denied | Ensure Docker socket is mounted in docker-compose.yml/docker-stack.yml |
+| Docker API errors | Check DOCKER_SOCKET_PATH and socket mount |
+| Swarm API unavailable | Ensure containers run on manager nodes (docker-stack.yml) |
 
 ### Database Issues
 | Problem | Solution |
@@ -152,7 +157,7 @@ docker run -p 8000:80 your-image-name
 ### Required
 ```bash
 DATABASE_URL="mysql://user:pass@host:3306/db"
-DOCKER_SOCKET_PATH="/var/run/docker.sock"
+DOCKER_SOCKET_PATH="/var/run/docker.sock"  # Must match mounted socket path
 GITHUB_TOKEN="ghp_your_token_here"
 ```
 
@@ -181,7 +186,17 @@ GRAFANA_URL="http://localhost:3000"
    ./scripts/docker-php.sh console lint:container
    ```
 
-4. **Before deploying**:
+4. **Test Docker socket access** (if using Docker monitoring):
+   ```bash
+   # Test socket access locally
+   docker-compose up -d
+   curl http://localhost/api/docker/services
+   
+   # Test socket mount
+   docker-compose exec backend ls -la /var/run/docker.sock
+   ```
+
+5. **Before deploying**:
    ```bash
    ./scripts/validate-setup.sh
    docker build -f backend/.docker/Dockerfile backend/

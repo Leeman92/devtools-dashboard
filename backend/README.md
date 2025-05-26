@@ -22,7 +22,13 @@ A comprehensive Symfony-based API for monitoring Docker services, CI/CD pipeline
 
 ## 🛠️ Installation
 
-1. **Run setup validation** (recommended):
+1. **Setup Git hooks** (recommended for developers):
+   ```bash
+   # Install pre-commit hooks for automatic validation
+   ./scripts/setup-git-hooks.sh
+   ```
+
+2. **Run setup validation**:
    ```bash
    # Run the validation script to check your setup (uses Docker)
    ./scripts/validate-setup.sh
@@ -122,18 +128,32 @@ The application uses Symfony's service container for dependency injection. Key s
 | `DOCKER_SOCKET_PATH` | Docker socket path | `/var/run/docker.sock` |
 | `GITHUB_TOKEN` | GitHub Personal Access Token | Required |
 | `GITHUB_API_URL` | GitHub API URL | `https://api.github.com` |
+| `github_api_url_default` | Default GitHub API URL (internal) | `https://api.github.com` |
 | `PROMETHEUS_URL` | Prometheus server URL | Optional |
 | `GRAFANA_URL` | Grafana server URL | Optional |
 
 ### Docker Socket Access
 
-The application needs access to the Docker socket to monitor services and containers:
+The application needs access to the Docker socket to monitor services and containers.
 
+**Local Development (docker-compose.yml):**
 ```yaml
-# docker-stack.yml
 volumes:
+  - ./backend:/app
   - /var/run/docker.sock:/var/run/docker.sock:ro
 ```
+
+**Production (docker-stack.yml):**
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock:ro
+deploy:
+  placement:
+    constraints:
+      - node.role == manager  # Required for Swarm API access
+```
+
+**Important**: In Docker Swarm, containers must run on manager nodes to access the full Docker API. See [DOCKER_SOCKET_ACCESS.md](../DOCKER_SOCKET_ACCESS.md) for detailed configuration and security considerations.
 
 ## 📈 Data Collection
 

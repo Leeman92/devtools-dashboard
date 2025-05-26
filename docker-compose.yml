@@ -7,6 +7,8 @@ services:
     # map your source code into the container
     volumes:
       - ./backend:/app
+      # Mount Docker socket for container monitoring
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     # expose port 80 in the container on 8080 of the host
     ports:
       - "80:80"
