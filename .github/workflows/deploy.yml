@@ -38,60 +38,20 @@ jobs:
           mkdir -p /tmp/.buildx-cache
       
       - name: Install Vault CLI
-        run: |
-          echo "Installing Vault CLI version ${{ env.VAULT_VERSION }}"
-          curl -fsSL https://releases.hashicorp.com/vault/${{ env.VAULT_VERSION }}/vault_${{ env.VAULT_VERSION }}_linux_amd64.zip -o vault.zip
-          echo "${{ env.VAULT_SHA256 }}  vault.zip" | sha256sum -c
-          unzip vault.zip
-          sudo mv vault /usr/local/bin/vault
-          echo "Installed Vault version:"
-          vault version
+        run: ./scripts/deployment/install-vault.sh
+        env:
+          VAULT_VERSION: ${{ env.VAULT_VERSION }}
+          VAULT_SHA256: ${{ env.VAULT_SHA256 }}
 
-      - name: Get GitHub OIDC token
-        id: oidc
-        run: |
-          echo "Fetching OIDC token from GitHub..."
-          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r '.value')
-          echo "::add-mask::$OIDC_TOKEN"
-          echo "OIDC_TOKEN=$OIDC_TOKEN" >> $GITHUB_ENV
+      - name: Authenticate with Vault
+        run: ./scripts/deployment/setup-vault-auth.sh
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
 
-      - name: Authenticate with Vault using OIDC
-        id: vault-auth
-        run: |
-          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
-          export JWT="${{ env.OIDC_TOKEN }}"
-      
-          echo "Logging into Vault..."
-          LOGIN_RESPONSE=$(echo "{\"jwt\": \"$JWT\", \"role\": \"github-actions\"}" | \
-            curl -s --request POST --data @- "$VAULT_ADDR/v1/auth/jwt/login")
-
-          echo "$LOGIN_RESPONSE"
-
-          VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
-
-          if [[ "$VAULT_TOKEN" == "null" || -z "$VAULT_TOKEN" ]]; then
-            echo "Vault login failed"
-            exit 1
-          fi
-
-          echo "::add-mask::$VAULT_TOKEN"
-          echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV
-
-      - name: Read secrets from Vault
-        run: |
-          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
-          export VAULT_TOKEN="${{ env.VAULT_TOKEN }}"
-
-          echo "Fetching secrets from Vault..."
-          HARBOR_USERNAME=$(vault kv get -field=HARBOR_USERNAME ci/github)
-          HARBOR_PASSWORD=$(vault kv get -field=HARBOR_PASSWORD ci/github)
-          
-          echo "::add-mask::$HARBOR_USERNAME"
-          echo "::add-mask::$HARBOR_PASSWORD"
-          
-          echo "HARBOR_USERNAME=$HARBOR_USERNAME" >> $GITHUB_ENV
-          echo "HARBOR_PASSWORD=$HARBOR_PASSWORD" >> $GITHUB_ENV
+      - name: Fetch build secrets from Vault
+        run: ./scripts/deployment/fetch-build-secrets.sh
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
 
       - name: Log in to Harbor
         uses: docker/login-action@v3
@@ -128,169 +88,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Vault CLI
-        run: |
-          echo "Installing Vault CLI version ${{ env.VAULT_VERSION }}"
-          curl -fsSL https://releases.hashicorp.com/vault/${{ env.VAULT_VERSION }}/vault_${{ env.VAULT_VERSION }}_linux_amd64.zip -o vault.zip
-          echo "${{ env.VAULT_SHA256 }}  vault.zip" | sha256sum -c
-          unzip vault.zip
-          sudo mv vault /usr/local/bin/vault
-          echo "Installed Vault version:"
-          vault version
+        run: ./scripts/deployment/install-vault.sh
+        env:
+          VAULT_VERSION: ${{ env.VAULT_VERSION }}
+          VAULT_SHA256: ${{ env.VAULT_SHA256 }}
 
-      - name: Get GitHub OIDC token
-        id: oidc
-        run: |
-          echo "Fetching OIDC token from GitHub..."
-          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r '.value')
-          echo "::add-mask::$OIDC_TOKEN"
-          echo "OIDC_TOKEN=$OIDC_TOKEN" >> $GITHUB_ENV
+      - name: Authenticate with Vault
+        run: ./scripts/deployment/setup-vault-auth.sh
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
 
-      - name: Authenticate with Vault using OIDC
-        id: vault-auth
-        run: |
-          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
-          export JWT="${{ env.OIDC_TOKEN }}"
-      
-          echo "Logging into Vault..."
-          LOGIN_RESPONSE=$(echo "{\"jwt\": \"$JWT\", \"role\": \"github-actions\"}" | \
-            curl -s --request POST --data @- "$VAULT_ADDR/v1/auth/jwt/login")
-
-          echo "$LOGIN_RESPONSE"
-
-          VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
-
-          if [[ "$VAULT_TOKEN" == "null" || -z "$VAULT_TOKEN" ]]; then
-            echo "Vault login failed"
-            exit 1
-          fi
-
-          echo "::add-mask::$VAULT_TOKEN"
-          echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV
-
-      - name: Read secrets from Vault
-        run: |
-          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
-          export VAULT_TOKEN="${{ env.VAULT_TOKEN }}"
-
-          echo "Fetching secrets from Vault..."
-          echo "SERVER_IP=$(vault kv get -field=SERVER_IP ci/github)" >> $GITHUB_ENV
-          echo "SERVER_PORT=$(vault kv get -field=SERVER_PORT ci/github)" >> $GITHUB_ENV
-          
-          # Fetch SSH private key and mask it
-          SSH_KEY=$(vault kv get -field=SSH_PRIVATE_KEY ci/github)
-          echo "::add-mask::$SSH_KEY"
-          printf "SSH_PRIVATE_KEY<<__EOT__\n%s\n__EOT__\n" "$SSH_KEY" >> "$GITHUB_ENV"
+      - name: Fetch deployment secrets from Vault
+        run: ./scripts/deployment/fetch-deploy-secrets.sh
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
 
       - name: Generate environment file from Vault
-        run: |
-          export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
-          export VAULT_TOKEN="${{ env.VAULT_TOKEN }}"
-          
-          echo "🔐 Generating .env.production from Vault secrets..."
-          
-          # Function to safely fetch secrets
-          fetch_vault_secret() {
-            local field="$1"
-            local path="$2"
-            local output
-            
-            output=$(vault kv get -field="$field" "$path" 2>&1)
-            if [ $? -eq 0 ] && [ -n "$output" ] && [ "$output" != "null" ]; then
-              echo "$output"
-              return 0
-            else
-              echo "❌ Failed to fetch $field from $path: $output" >&2
-              return 1
-            fi
-          }
-          
-          # Fetch required secrets first
-          echo "📋 Fetching required secrets..."
-          APP_SECRET=$(fetch_vault_secret "app_secret" "secret/dashboard/production")
-          if [ $? -ne 0 ]; then
-            echo "💥 Failed to fetch APP_SECRET - deployment cannot continue"
-            exit 1
-          fi
-          echo "::add-mask::$APP_SECRET"
-          
-          DATABASE_URL=$(fetch_vault_secret "database_url" "secret/dashboard/production")
-          if [ $? -ne 0 ]; then
-            echo "💥 Failed to fetch DATABASE_URL - deployment cannot continue"
-            exit 1
-          fi
-          echo "::add-mask::$DATABASE_URL"
-          
-          echo "✅ Required secrets retrieved successfully"
-          
-          # Create the environment file
-          cat > .env.production << EOF
-          # Environment file generated from HashiCorp Vault
-          # Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          # Environment: production
-          
-          # Symfony Environment
-          APP_ENV=production
-          APP_DEBUG=false
-          
-          # Secrets from Vault
-          APP_SECRET=${APP_SECRET}
-          DATABASE_URL=${DATABASE_URL}
-          EOF
-          
-          # Add optional secrets if they exist
-          echo "📧 Fetching optional secrets..."
-          
-          if MAILER_DSN=$(fetch_vault_secret "mailer_dsn" "secret/dashboard/production" 2>/dev/null); then
-            echo "::add-mask::$MAILER_DSN"
-            echo "MAILER_DSN=${MAILER_DSN}" >> .env.production
-            echo "✅ MAILER_DSN added"
-          else
-            echo "⚠️  MAILER_DSN not found, skipping"
-          fi
-          
-          if REDIS_URL=$(fetch_vault_secret "redis_url" "secret/dashboard/production" 2>/dev/null); then
-            echo "::add-mask::$REDIS_URL"
-            echo "REDIS_URL=${REDIS_URL}" >> .env.production
-            echo "✅ REDIS_URL added"
-          else
-            echo "⚠️  REDIS_URL not found, skipping"
-          fi
-          
-          # Add static configuration
-          cat >> .env.production << EOF
-          
-          # Static configuration
-          APP_TIMEZONE=UTC
-          TRUSTED_PROXIES=127.0.0.1,REMOTE_ADDR
-          TRUSTED_HOSTS='^dashboard\.patricklehmann\.dev$'
-          
-          # Logging
-          LOG_LEVEL=info
-          LOG_CHANNEL=stderr
-          EOF
-          
-          echo ""
-          echo "✅ Environment file generated successfully"
-          echo "📏 File size: $(wc -l < .env.production) lines"
-          echo "🔍 Validating required variables..."
-          
-          # Validate required variables are present
-          if ! grep -q "^APP_SECRET=" .env.production || ! grep -q "^DATABASE_URL=" .env.production; then
-            echo "💥 Validation failed - required variables missing"
-            echo "🔍 Checking which variables are missing:"
-            if ! grep -q "^APP_SECRET=" .env.production; then
-              echo "❌ APP_SECRET is missing"
-            fi
-            if ! grep -q "^DATABASE_URL=" .env.production; then
-              echo "❌ DATABASE_URL is missing"
-            fi
-            echo "⚠️  Environment file structure (secrets redacted):"
-            grep -E "^[A-Z_]+=.*" .env.production | sed 's/=.*/=***REDACTED***/'
-            exit 1
-          fi
-          
-          echo "✅ Validation passed - all required variables present"
+        run: ./scripts/deployment/generate-env-file.sh
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -299,11 +115,11 @@ jobs:
           username: patrick
           port: ${{ env.SERVER_PORT }}
           key: ${{ env.SSH_PRIVATE_KEY }}
-          source: "docker-stack.yml,.env.production"
+          source: "docker-stack.yml,.env.production,scripts/deployment/deploy-to-server.sh"
           target: "/home/patrick/dashboard"
           strip_components: 0
 
-      - name: SSH into server and deploy
+      - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ env.SERVER_IP }}
@@ -312,89 +128,5 @@ jobs:
           key: ${{ env.SSH_PRIVATE_KEY }}
           command_timeout: 5m
           script: |
-            set -e
-            echo "Starting deployment..."
-            
-            # Check if Vault is installed on the server and show version
-            if command -v vault &> /dev/null; then
-              echo "Vault is installed on server. Version:"
-              vault version
-            else
-              echo "Vault is not installed on this server"
-            fi
-
-            if ! docker info | grep -q "Swarm: active"; then
-              echo "Initializing Docker Swarm..."
-              docker swarm init
-            fi
-
-            echo "Setting up network..."
-            if ! docker network ls | grep -q dashboard-network; then
-              docker network create --driver overlay dashboard-network
-              echo "✅ Network created"
-            else
-              echo "✅ Network already exists"
-            fi
-
-            echo "Setting up environment configuration..."
-            # Remove old config if it exists (force removal)
-            if docker config ls | grep -q dashboard_env; then
-              echo "🔄 Removing existing environment configuration..."
-              docker config rm dashboard_env
-              echo "✅ Old configuration removed"
-            fi
-            
-            # Create new config from environment file
-            if [ -f "/home/patrick/dashboard/.env.production" ]; then
-              docker config create dashboard_env /home/patrick/dashboard/.env.production
-              echo "✅ Environment configuration created"
-            else
-              echo "❌ Environment file not found!"
-              exit 1
-            fi
-
-            echo "Cleaning up old images..."
-            docker image prune -f --filter "until=24h"
-
-            echo "Pulling latest image..."
-            docker pull harbor.patricklehmann.dev/dashboard/dashboard:latest
-
-            echo "Deploying stack..."
-            cd /home/patrick/dashboard
-            docker stack deploy -c docker-stack.yml dashboard
-
-            echo "Waiting for services to be ready..."
-            timeout=120
-            while [ $timeout -gt 0 ]; do
-              if docker service ls | grep dashboard_dashboard | grep -q "2/2"; then
-                echo "All replicas are running!"
-                break
-              fi
-              sleep 2
-              timeout=$((timeout-2))
-            done
-
-            if [ $timeout -eq 0 ]; then
-              echo "Service deployment failed!"
-              docker service logs dashboard_dashboard
-              exit 1
-            fi
-
-            echo "Verifying deployment..."
-            sleep 10
-
-            if ! docker service ls | grep dashboard_dashboard | grep -q "2/2"; then
-              echo "Service health check failed!"
-              docker service logs dashboard_dashboard
-              exit 1
-            fi
-
-            unhealthy_containers=$(docker ps --filter "health=unhealthy" --filter "name=dashboard" --format "{{.Names}}")
-            if [ ! -z "$unhealthy_containers" ]; then
-              echo "Found unhealthy containers:"
-              echo "$unhealthy_containers"
-              docker service logs dashboard_dashboard
-              exit 1
-            fi
-
-            echo "Deployment completed successfully!"
+            chmod +x /home/patrick/dashboard/scripts/deployment/deploy-to-server.sh
+            /home/patrick/dashboard/scripts/deployment/deploy-to-server.sh
