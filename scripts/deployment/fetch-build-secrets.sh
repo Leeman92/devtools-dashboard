@@ -23,17 +23,30 @@ fi
 fetch_vault_secret() {
     local field="$1"
     local path="$2"
-    local output
+    local temp_file
+    local exit_code
     
-    output=$(vault kv get -field="$field" "$path" 2>&1)
-    if [ $? -eq 0 ] && [ -n "$output" ] && [ "$output" != "null" ]; then
-        # Store in global variable instead of echoing to prevent log exposure
-        VAULT_SECRET_VALUE="$output"
-        return 0
-    else
-        echo "❌ Failed to fetch $field from $path: $output" >&2
-        return 1
+    # Use temporary file to avoid any stdout leakage
+    temp_file=$(mktemp)
+    
+    # Redirect all output to temp file
+    vault kv get -field="$field" "$path" > "$temp_file" 2>&1
+    exit_code=$?
+    
+    if [ $exit_code -eq 0 ]; then
+        local output
+        output=$(cat "$temp_file")
+        if [ -n "$output" ] && [ "$output" != "null" ]; then
+            # Store in global variable instead of echoing to prevent log exposure
+            VAULT_SECRET_VALUE="$output"
+            rm -f "$temp_file"
+            return 0
+        fi
     fi
+    
+    echo "❌ Failed to fetch $field from $path" >&2
+    rm -f "$temp_file"
+    return 1
 }
 
 echo "📋 Fetching Harbor credentials..."
