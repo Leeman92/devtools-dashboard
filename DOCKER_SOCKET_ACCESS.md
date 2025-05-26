@@ -26,14 +26,27 @@ environment:
 ```
 
 ### Container User Permissions
-The Dockerfile ensures the container user has access to the Docker group:
+The Dockerfile ensures the container user has access to the Docker group with the correct group ID:
 
 ```dockerfile
 # Create group and user with the same UID/GID as the host user
 RUN addgroup -g $GID $USERNAME \
  && adduser -D -u $UID -G $USERNAME $USERNAME \
- && addgroup -g 962 docker \
+ && addgroup -g $DOCKER_GID docker \
  && adduser $USERNAME docker
+```
+
+**Important**: The Docker group ID varies between systems. Use the build argument `DOCKER_GID` to match your host system:
+
+```bash
+# Check your Docker group ID
+getent group docker
+
+# Local development (docker-compose.yml automatically detects)
+docker-compose up -d
+
+# Manual build with specific Docker GID
+docker build --build-arg DOCKER_GID=986 -f backend/.docker/Dockerfile backend/
 ```
 
 ### Environment Variable
@@ -135,7 +148,17 @@ curl http://your-server:3001/api/docker/containers
 ```bash
 # Error: dial unix /var/run/docker.sock: connect: permission denied
 ```
-**Solution**: Ensure socket is mounted and container user has Docker group access (GID 962)
+**Solution**: Ensure socket is mounted and container user has Docker group access with correct GID
+
+Check Docker group ID on host:
+```bash
+getent group docker
+```
+
+Rebuild container with correct Docker GID:
+```bash
+docker build --build-arg DOCKER_GID=986 -f backend/.docker/Dockerfile backend/
+```
 
 #### 2. Socket Not Found
 ```bash

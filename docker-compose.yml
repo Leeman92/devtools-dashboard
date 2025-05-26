@@ -4,6 +4,8 @@ services:
       context: backend
       dockerfile: .docker/Dockerfile
       target: development
+      args:
+        DOCKER_GID: ${DOCKER_GID:-999}
     # map your source code into the container
     volumes:
       - ./backend:/app

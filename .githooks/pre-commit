@@ -152,13 +152,16 @@ fi
 # 8. Validate that staged files don't break the build
 print_status $YELLOW "🔨 Testing Docker build with staged changes..."
 if git diff --cached --name-only | grep -q "backend/"; then
-    # Create a temporary commit to test build
-    TEMP_STASH=$(git stash create)
-    if [ -n "$TEMP_STASH" ]; then
-        git stash push -m "pre-commit-temp" --include-untracked
+    # Save working directory state (only if there are unstaged changes)
+    STASH_NAME="pre-commit-temp-$(date +%s)"
+    HAS_UNSTAGED_CHANGES=false
+    
+    if ! git diff --quiet; then
+        git stash push -m "$STASH_NAME" --include-untracked > /dev/null 2>&1
+        HAS_UNSTAGED_CHANGES=true
     fi
     
-    # Test build
+    # Test build with staged changes
     if docker build -f backend/.docker/Dockerfile --target=development backend/ > /dev/null 2>&1; then
         print_status $GREEN "✅ Docker build test passed"
     else
@@ -166,10 +169,12 @@ if git diff --cached --name-only | grep -q "backend/"; then
         VALIDATION_FAILED=true
     fi
     
-    # Restore stash if we created one
-    if [ -n "$TEMP_STASH" ]; then
+    # Restore working directory state if we stashed changes
+    if [ "$HAS_UNSTAGED_CHANGES" = true ] && git stash list | grep -q "$STASH_NAME"; then
         git stash pop > /dev/null 2>&1 || true
     fi
+else
+    print_status $GREEN "✅ No backend changes to test"
 fi
 
 # Final validation result

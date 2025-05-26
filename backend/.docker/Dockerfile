@@ -4,6 +4,7 @@ WORKDIR /app
 ARG USERNAME=backend
 ARG UID=1000
 ARG GID=1000
+ARG DOCKER_GID=999
 
 # Install system dependencies and PHP extensions
 RUN apk add --no-cache \
@@ -17,7 +18,7 @@ RUN apk add --no-cache \
 # Create group and user with the same UID/GID as the host user
 RUN addgroup -g $GID $USERNAME \
  && adduser -D -u $UID -G $USERNAME $USERNAME \
- && addgroup -g 962 docker \
+ && (getent group docker > /dev/null 2>&1 || addgroup -g $DOCKER_GID docker 2>/dev/null || addgroup docker) \
  && adduser $USERNAME docker
 
 # Install Composer
@@ -64,6 +65,7 @@ FROM base AS production
 ARG USERNAME=backend
 ARG UID=1000
 ARG GID=1000
+ARG DOCKER_GID=999
 
 # Production is already optimized in base stage
 # Just ensure proper permissions
