@@ -21,7 +21,12 @@ RUN addgroup -g $GID $USERNAME \
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 
 # Copy composer files first for better layer caching
-COPY composer.json composer.lock symfony.lock ./
+COPY composer.json ./
+COPY composer.lock ./
+COPY symfony.lock ./
+
+# Verify files were copied correctly
+RUN ls -la composer.* symfony.lock
 
 # Install dependencies as root first, then change ownership
 RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
