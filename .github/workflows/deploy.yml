@@ -38,9 +38,19 @@ jobs:
           export VAULT_ADDR="${{ secrets.VAULT_ADDR }}"
           export JWT="${{ env.OIDC_TOKEN }}"
       
-          VAULT_TOKEN=$(echo "{\"jwt\": \"$JWT\", \"role\": \"github-actions\"}" | \
-            curl -s --request POST --data @- "$VAULT_ADDR/v1/auth/jwt/login" | jq -r '.auth.client_token')
-      
+          echo "Logging into Vault..."
+          LOGIN_RESPONSE=$(echo "{\"jwt\": \"$JWT\", \"role\": \"github-actions\"}" | \
+            curl -s --request POST --data @- "$VAULT_ADDR/v1/auth/jwt/login")
+
+          echo "$LOGIN_RESPONSE"
+
+          VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+
+          if [[ "$VAULT_TOKEN" == "null" || -z "$VAULT_TOKEN" ]]; then
+            echo "Vault login failed"
+            exit 1
+          fi
+
           echo "::add-mask::$VAULT_TOKEN"
           echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV
 
@@ -52,9 +62,7 @@ jobs:
           echo "Fetching secrets from Vault..."
           echo "SERVER_IP=$(vault read -field=data.SERVER_IP ci/data/github)" >> $GITHUB_ENV
           echo "SERVER_PORT=$(vault read -field=data.SERVER_PORT ci/data/github)" >> $GITHUB_ENV
-          echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
-          vault read -field=data.SSH_PRIVATE_KEY ci/data/github >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "SSH_PRIVATE_KEY=$(vault read -field=data.SSH_PRIVATE_KEY ci/data/github | base64)" >> $GITHUB_ENV
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
