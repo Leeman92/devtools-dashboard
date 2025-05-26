@@ -19,7 +19,7 @@ if [[ -z "${VAULT_TOKEN:-}" ]]; then
     exit 1
 fi
 
-# Function to safely fetch secrets
+# Function to safely fetch secrets (without echoing sensitive data)
 fetch_vault_secret() {
     local field="$1"
     local path="$2"
@@ -27,7 +27,8 @@ fetch_vault_secret() {
     
     output=$(vault kv get -field="$field" "$path" 2>&1)
     if [ $? -eq 0 ] && [ -n "$output" ] && [ "$output" != "null" ]; then
-        echo "$output"
+        # Store in global variable instead of echoing to prevent log exposure
+        VAULT_SECRET_VALUE="$output"
         return 0
     else
         echo "❌ Failed to fetch $field from $path: $output" >&2
@@ -37,19 +38,21 @@ fetch_vault_secret() {
 
 # Fetch required secrets first
 echo "📋 Fetching required secrets..."
-APP_SECRET=$(fetch_vault_secret "app_secret" "secret/dashboard/production")
-if [ $? -ne 0 ]; then
+if fetch_vault_secret "app_secret" "secret/dashboard/production"; then
+    APP_SECRET="$VAULT_SECRET_VALUE"
+    echo "::add-mask::$APP_SECRET"
+else
     echo "💥 Failed to fetch APP_SECRET - deployment cannot continue"
     exit 1
 fi
-echo "::add-mask::$APP_SECRET"
 
-DATABASE_URL=$(fetch_vault_secret "database_url" "secret/dashboard/production")
-if [ $? -ne 0 ]; then
+if fetch_vault_secret "database_url" "secret/dashboard/production"; then
+    DATABASE_URL="$VAULT_SECRET_VALUE"
+    echo "::add-mask::$DATABASE_URL"
+else
     echo "💥 Failed to fetch DATABASE_URL - deployment cannot continue"
     exit 1
 fi
-echo "::add-mask::$DATABASE_URL"
 
 echo "✅ Required secrets retrieved successfully"
 
@@ -71,7 +74,8 @@ EOF
 # Add optional secrets if they exist
 echo "📧 Fetching optional secrets..."
 
-if MAILER_DSN=$(fetch_vault_secret "mailer_dsn" "secret/dashboard/production" 2>/dev/null); then
+if fetch_vault_secret "mailer_dsn" "secret/dashboard/production" 2>/dev/null; then
+    MAILER_DSN="$VAULT_SECRET_VALUE"
     echo "::add-mask::$MAILER_DSN"
     echo "MAILER_DSN=${MAILER_DSN}" >> .env.production
     echo "✅ MAILER_DSN added"
@@ -79,7 +83,8 @@ else
     echo "⚠️  MAILER_DSN not found, skipping"
 fi
 
-if REDIS_URL=$(fetch_vault_secret "redis_url" "secret/dashboard/production" 2>/dev/null); then
+if fetch_vault_secret "redis_url" "secret/dashboard/production" 2>/dev/null; then
+    REDIS_URL="$VAULT_SECRET_VALUE"
     echo "::add-mask::$REDIS_URL"
     echo "REDIS_URL=${REDIS_URL}" >> .env.production
     echo "✅ REDIS_URL added"
