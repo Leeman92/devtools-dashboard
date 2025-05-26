@@ -13,13 +13,27 @@ The application needs access to the Docker socket (`/var/run/docker.sock`) to:
 ## 🏠 Local Development (Docker Compose)
 
 ### Configuration
-The `docker-compose.yml` mounts the Docker socket as a read-only volume:
+The `docker-compose.yml` mounts the Docker socket as a read-only volume and sets the required environment variable:
 
 ```yaml
 volumes:
   - ./backend:/app
   # Mount Docker socket for container monitoring
   - /var/run/docker.sock:/var/run/docker.sock:ro
+environment:
+  APP_ENV: dev
+  DOCKER_SOCKET_PATH: /var/run/docker.sock
+```
+
+### Container User Permissions
+The Dockerfile ensures the container user has access to the Docker group:
+
+```dockerfile
+# Create group and user with the same UID/GID as the host user
+RUN addgroup -g $GID $USERNAME \
+ && adduser -D -u $UID -G $USERNAME $USERNAME \
+ && addgroup -g 962 docker \
+ && adduser $USERNAME docker
 ```
 
 ### Environment Variable
@@ -121,7 +135,7 @@ curl http://your-server:3001/api/docker/containers
 ```bash
 # Error: dial unix /var/run/docker.sock: connect: permission denied
 ```
-**Solution**: Ensure socket is mounted and container user has access
+**Solution**: Ensure socket is mounted and container user has Docker group access (GID 962)
 
 #### 2. Socket Not Found
 ```bash
@@ -129,11 +143,23 @@ curl http://your-server:3001/api/docker/containers
 ```
 **Solution**: Verify socket mount in docker-compose.yml or docker-stack.yml
 
-#### 3. API Errors in Swarm
+#### 3. HTTP Client Errors
+```bash
+# Error: Unsupported scheme in "unix://var/run/docker.sock": "http" or "https" expected
+```
+**Solution**: Use cURL with CURLOPT_UNIX_SOCKET_PATH instead of HTTP client
+
+#### 4. API Errors in Swarm
 ```bash
 # Error: This node is not a swarm manager
 ```
 **Solution**: Ensure placement constraint `node.role == manager`
+
+#### 5. Environment Variable Missing
+```bash
+# Error: DOCKER_SOCKET_PATH not set
+```
+**Solution**: Add DOCKER_SOCKET_PATH environment variable to docker-compose.yml
 
 ### Debugging Commands
 
@@ -141,9 +167,19 @@ curl http://your-server:3001/api/docker/containers
 # Check if socket is accessible
 ls -la /var/run/docker.sock
 
+# Check container user permissions
+docker-compose exec backend id
+docker-compose exec backend ls -la /var/run/docker.sock
+
 # Test socket permissions
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro \
   alpine/curl curl --unix-socket /var/run/docker.sock http://localhost/version
+
+# Test Docker API directly from container
+docker-compose exec backend curl --unix-socket /var/run/docker.sock 'http://localhost/containers/json?all=true'
+
+# Check environment variables
+docker-compose exec backend env | grep DOCKER
 
 # Check container placement (Swarm)
 docker service ps dashboard_dashboard

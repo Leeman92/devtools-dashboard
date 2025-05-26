@@ -7,8 +7,6 @@ namespace App\Service;
 use App\Entity\DockerService as DockerServiceEntity;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 /**
  * Docker Service for interacting with Docker API to monitor containers and swarm services.
@@ -16,7 +14,6 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 final readonly class DockerService
 {
     public function __construct(
-        private HttpClientInterface $httpClient,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
         private string $dockerSocketPath = '/var/run/docker.sock',
@@ -30,12 +27,7 @@ final readonly class DockerService
     public function getSwarmServices(): array
     {
         try {
-            $response = $this->httpClient->request('GET', 'http://localhost/services', [
-                'base_uri' => 'unix://' . $this->dockerSocketPath,
-                'timeout' => 10,
-            ]);
-
-            $services = $response->toArray();
+            $services = $this->makeDockerApiRequest('/services');
             $result = [];
 
             foreach ($services as $service) {
@@ -52,7 +44,7 @@ final readonly class DockerService
 
             return $result;
 
-        } catch (TransportExceptionInterface $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Failed to retrieve Docker Swarm services', [
                 'error' => $e->getMessage(),
             ]);
@@ -69,13 +61,7 @@ final readonly class DockerService
     public function getContainers(): array
     {
         try {
-            $response = $this->httpClient->request('GET', 'http://localhost/containers/json', [
-                'base_uri' => 'unix://' . $this->dockerSocketPath,
-                'query' => ['all' => 'true'],
-                'timeout' => 10,
-            ]);
-
-            $containers = $response->toArray();
+            $containers = $this->makeDockerApiRequest('/containers/json?all=true');
             $result = [];
 
             foreach ($containers as $container) {
@@ -88,7 +74,7 @@ final readonly class DockerService
 
             return $result;
 
-        } catch (TransportExceptionInterface $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Failed to retrieve Docker containers', [
                 'error' => $e->getMessage(),
             ]);
@@ -103,21 +89,11 @@ final readonly class DockerService
     public function getContainerLogs(string $containerId, int $lines = 100): array
     {
         try {
-            $response = $this->httpClient->request('GET', "http://localhost/containers/{$containerId}/logs", [
-                'base_uri' => 'unix://' . $this->dockerSocketPath,
-                'query' => [
-                    'stdout' => 'true',
-                    'stderr' => 'true',
-                    'tail' => $lines,
-                    'timestamps' => 'true',
-                ],
-                'timeout' => 10,
-            ]);
-
-            $logs = $response->getContent();
+            $endpoint = "/containers/{$containerId}/logs?stdout=true&stderr=true&tail={$lines}&timestamps=true";
+            $logs = $this->makeDockerApiRequestRaw($endpoint);
             return $this->parseLogs($logs);
 
-        } catch (TransportExceptionInterface $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Failed to retrieve container logs', [
                 'container_id' => $containerId,
                 'error' => $e->getMessage(),
@@ -133,21 +109,11 @@ final readonly class DockerService
     public function getServiceLogs(string $serviceId, int $lines = 100): array
     {
         try {
-            $response = $this->httpClient->request('GET', "http://localhost/services/{$serviceId}/logs", [
-                'base_uri' => 'unix://' . $this->dockerSocketPath,
-                'query' => [
-                    'stdout' => 'true',
-                    'stderr' => 'true',
-                    'tail' => $lines,
-                    'timestamps' => 'true',
-                ],
-                'timeout' => 10,
-            ]);
-
-            $logs = $response->getContent();
+            $endpoint = "/services/{$serviceId}/logs?stdout=true&stderr=true&tail={$lines}&timestamps=true";
+            $logs = $this->makeDockerApiRequestRaw($endpoint);
             return $this->parseLogs($logs);
 
-        } catch (TransportExceptionInterface $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Failed to retrieve service logs', [
                 'service_id' => $serviceId,
                 'error' => $e->getMessage(),
@@ -322,5 +288,73 @@ final readonly class DockerService
         }
 
         return 'unknown';
+    }
+
+    /**
+     * Make a Docker API request using cURL with Unix socket.
+     */
+    private function makeDockerApiRequest(string $endpoint): array
+    {
+        $ch = curl_init();
+        
+        curl_setopt_array($ch, [
+            CURLOPT_UNIX_SOCKET_PATH => $this->dockerSocketPath,
+            CURLOPT_URL => 'http://localhost' . $endpoint,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+            ],
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false || !empty($error)) {
+            throw new \RuntimeException("cURL error: {$error}");
+        }
+
+        if ($httpCode !== 200) {
+            throw new \RuntimeException("HTTP error: {$httpCode}");
+        }
+
+        $data = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \RuntimeException('Invalid JSON response: ' . json_last_error_msg());
+        }
+
+        return $data;
+    }
+
+    /**
+     * Make a Docker API request using cURL with Unix socket (raw response).
+     */
+    private function makeDockerApiRequestRaw(string $endpoint): string
+    {
+        $ch = curl_init();
+        
+        curl_setopt_array($ch, [
+            CURLOPT_UNIX_SOCKET_PATH => $this->dockerSocketPath,
+            CURLOPT_URL => 'http://localhost' . $endpoint,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false || !empty($error)) {
+            throw new \RuntimeException("cURL error: {$error}");
+        }
+
+        if ($httpCode !== 200) {
+            throw new \RuntimeException("HTTP error: {$httpCode}");
+        }
+
+        return $response;
     }
 } 

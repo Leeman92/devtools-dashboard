@@ -134,13 +134,23 @@ The application uses Symfony's service container for dependency injection. Key s
 
 ### Docker Socket Access
 
-The application needs access to the Docker socket to monitor services and containers.
+The application needs access to the Docker socket to monitor services and containers. The implementation uses cURL with Unix socket support for reliable Docker API communication.
 
 **Local Development (docker-compose.yml):**
 ```yaml
 volumes:
   - ./backend:/app
   - /var/run/docker.sock:/var/run/docker.sock:ro
+environment:
+  APP_ENV: dev
+  DOCKER_SOCKET_PATH: /var/run/docker.sock
+```
+
+**Container User Permissions:**
+The Dockerfile ensures the container user has Docker group access:
+```dockerfile
+RUN addgroup -g 962 docker \
+ && adduser $USERNAME docker
 ```
 
 **Production (docker-stack.yml):**
@@ -152,6 +162,11 @@ deploy:
     constraints:
       - node.role == manager  # Required for Swarm API access
 ```
+
+**Technical Implementation:**
+- Uses cURL with `CURLOPT_UNIX_SOCKET_PATH` for Unix socket communication
+- Replaces Symfony HTTP client which doesn't support Unix sockets
+- Provides both JSON and raw response methods for different API endpoints
 
 **Important**: In Docker Swarm, containers must run on manager nodes to access the full Docker API. See [DOCKER_SOCKET_ACCESS.md](../DOCKER_SOCKET_ACCESS.md) for detailed configuration and security considerations.
 

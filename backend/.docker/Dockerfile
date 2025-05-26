@@ -9,13 +9,16 @@ ARG GID=1000
 RUN apk add --no-cache \
     git \
     unzip \
+    bash \
     && docker-php-ext-install \
     pdo \
-    opcache
+    opcache 
 
 # Create group and user with the same UID/GID as the host user
 RUN addgroup -g $GID $USERNAME \
- && adduser -D -u $UID -G $USERNAME $USERNAME
+ && adduser -D -u $UID -G $USERNAME $USERNAME \
+ && addgroup -g 962 docker \
+ && adduser $USERNAME docker
 
 # Install Composer
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer

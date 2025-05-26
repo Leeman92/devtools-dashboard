@@ -17,3 +17,4 @@ services:
     # optional: set your app environment
     environment:
       APP_ENV: dev
+      DOCKER_SOCKET_PATH: /var/run/docker.sock

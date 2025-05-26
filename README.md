@@ -18,7 +18,7 @@ A full-stack web application for monitoring Docker containers and CI jobs with H
 - Symfony 7.2
 - PHP 8.4+ with FrankenPHP
 - MySQL 8.0
-- Docker SDK for PHP
+- Docker API integration via cURL with Unix socket support
 - HashiCorp Vault for secrets management
 
 ### Frontend
@@ -125,6 +125,7 @@ devtools-dashboard/
 
 - [Development Guide](docs/DEVELOPMENT.md) - Comprehensive development workflow and standards
 - [Deployment Guide](docs/DEPLOYMENT.md) - Multi-environment deployment procedures
+- [Docker Socket Access Guide](DOCKER_SOCKET_ACCESS.md) - Docker integration configuration and troubleshooting
 - [Vault Setup Guide](docs/vault-setup.md) - HashiCorp Vault configuration
 - [Vault Secrets Template](docs/vault-secrets-template.md) - Secrets management template
 - [Project Rules](.cursorrules) - Coding standards and best practices
