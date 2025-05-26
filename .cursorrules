@@ -36,6 +36,21 @@ This is a Symfony-based dashboard application with Docker containerization, GitH
 - Use readonly properties and enums where appropriate
 - Follow SOLID principles and clean architecture patterns
 
+### Dependency Management:
+- **Never manually edit composer.json without updating composer.lock**
+- Always run `./scripts/docker-php.sh update` after modifying composer.json
+- Use `./scripts/docker-php.sh validate` to check for syntax errors before committing
+- Keep composer.lock in version control for reproducible builds
+- Use specific version constraints in composer.json (avoid `*` or `^` for critical dependencies)
+- **Use Docker for all PHP/Composer operations** - no local installation required
+
+### Docker-First Development:
+- **No local PHP/Composer required** - all operations use Docker containers
+- Use `./scripts/docker-php.sh` wrapper for simplified commands
+- Use `./scripts/validate-setup.sh` for comprehensive environment validation
+- All database operations through Docker with `--network host` for connectivity
+- Development workflow: validate → install → configure → migrate → test
+
 ### 3. Project-Specific Standards
 
 #### File Structure:
@@ -98,6 +113,10 @@ final class DashboardController extends AbstractController
 - Use non-root users for security
 - Optimize layer caching with proper COPY order
 - Include security scanning in CI/CD
+- **Always ensure composer.lock is up-to-date before Docker builds**
+- Copy composer files before source code for better layer caching
+- Use `./scripts/docker-php.sh validate` in CI/CD pipeline before building images
+- **Use Docker for all development operations** - eliminates local dependency requirements
 
 ### GitHub Actions Standards:
 - Use specific action versions (not @main or @latest)
@@ -246,15 +265,26 @@ try {
 
 ### Regular Tasks:
 - Security updates monthly
-- Dependency updates quarterly
+- Dependency updates quarterly using `./scripts/docker-php.sh update`
 - Performance reviews quarterly
 - Documentation updates with each release
 - Backup testing monthly
+- **Composer validation in CI/CD pipeline** using `./scripts/docker-php.sh validate`
 
 ### Code Maintenance:
 - Refactor code with high cyclomatic complexity
-- Remove deprecated code and dependencies
+- Remove deprecated code and dependencies using `./scripts/docker-php.sh composer remove`
 - Update coding standards as PHP evolves
-- Regular code quality audits
+- Regular code quality audits using `./scripts/docker-php.sh console lint:container`
+- **Validate composer.json/composer.lock sync before releases** using `./scripts/validate-setup.sh`
 
-Remember: Always prioritize security, maintainability, and performance in that order. When in doubt, choose the more secure and maintainable solution. 
+### Pre-Deployment Checklist:
+1. Run `./scripts/validate-setup.sh` to check complete setup
+2. Run `./scripts/docker-php.sh validate` to check dependency files
+3. Ensure composer.lock is committed and up-to-date
+4. Test Docker build locally before pushing
+5. Verify all environment variables are documented
+6. Check database migrations are ready with `./scripts/docker-php.sh console doctrine:migrations:status`
+7. Validate API endpoints with proper error handling
+
+Remember: Always prioritize security, maintainability, and performance in that order. When in doubt, choose the more secure and maintainable solution. **Never deploy with out-of-sync dependency files.** 

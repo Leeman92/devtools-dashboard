@@ -22,9 +22,19 @@ A comprehensive Symfony-based API for monitoring Docker services, CI/CD pipeline
 
 ## 🛠️ Installation
 
-1. **Install dependencies**:
+1. **Run setup validation** (recommended):
    ```bash
-   composer install
+   # Run the validation script to check your setup (uses Docker)
+   ./scripts/validate-setup.sh
+   ```
+
+2. **Validate and install dependencies** (using Docker):
+   ```bash
+   # Validate composer files first
+   docker run --rm -v $(pwd):/app -w /app composer:latest validate
+   
+   # Install dependencies
+   docker run --rm -v $(pwd):/app -w /app composer:latest install
    ```
 
 2. **Configure environment variables**:
@@ -44,20 +54,20 @@ A comprehensive Symfony-based API for monitoring Docker services, CI/CD pipeline
    GRAFANA_URL="http://localhost:3000"
    ```
 
-3. **Create database and run migrations**:
+3. **Create database and run migrations** (using Docker):
    ```bash
-   php bin/console doctrine:database:create
-   php bin/console doctrine:migrations:migrate
+   docker run --rm -v $(pwd):/app -w /app --network host php:8.4-cli php bin/console doctrine:database:create
+   docker run --rm -v $(pwd):/app -w /app --network host php:8.4-cli php bin/console doctrine:migrations:migrate
    ```
 
-4. **Start collecting metrics**:
+4. **Start collecting metrics** (using Docker):
    ```bash
    # Collect all metrics
-   php bin/console app:collect-metrics
+   docker run --rm -v $(pwd):/app -w /app --network host php:8.4-cli php bin/console app:collect-metrics
    
    # Collect specific source
-   php bin/console app:collect-metrics --source=docker
-   php bin/console app:collect-metrics --source=github --repository=owner/repo
+   docker run --rm -v $(pwd):/app -w /app --network host php:8.4-cli php bin/console app:collect-metrics --source=docker
+   docker run --rm -v $(pwd):/app -w /app --network host php:8.4-cli php bin/console app:collect-metrics --source=github --repository=owner/repo
    ```
 
 ## 📊 API Endpoints
@@ -139,17 +149,17 @@ Set up a cron job to collect metrics regularly:
 */15 * * * * /usr/local/bin/php /app/bin/console app:collect-metrics --source=github --repository=owner/repo
 ```
 
-### Manual Collection
+### Manual Collection (using Docker)
 
 ```bash
 # Collect all metrics
-php bin/console app:collect-metrics
+docker run --rm -v $(pwd):/app -w /app --network host php:8.4-cli php bin/console app:collect-metrics
 
 # Dry run (no data storage)
-php bin/console app:collect-metrics --dry-run
+docker run --rm -v $(pwd):/app -w /app php:8.4-cli php bin/console app:collect-metrics --dry-run
 
 # Specific repository
-php bin/console app:collect-metrics --repository=patricklehmann/devtools-dashboard
+docker run --rm -v $(pwd):/app -w /app --network host php:8.4-cli php bin/console app:collect-metrics --repository=patricklehmann/devtools-dashboard
 ```
 
 ## 🏗️ Architecture
@@ -194,14 +204,14 @@ Historical data is stored with:
 - Efficient indexing for queries
 - Alert threshold tracking
 
-## 🧪 Testing
+## 🧪 Testing (using Docker)
 
 ```bash
 # Run tests
-php bin/phpunit
+docker run --rm -v $(pwd):/app -w /app php:8.4-cli php bin/phpunit
 
 # Test specific functionality
-php bin/console app:collect-metrics --dry-run
+docker run --rm -v $(pwd):/app -w /app php:8.4-cli php bin/console app:collect-metrics --dry-run
 ```
 
 ## 📝 API Response Format
@@ -241,6 +251,27 @@ All API endpoints return JSON in this format:
 
 ## 📚 Development
 
+### Adding New Dependencies
+
+1. **Add to composer.json**:
+   ```bash
+   composer require package/name
+   ```
+
+2. **Never manually edit composer.json without updating lock file**:
+   ```bash
+   # After manual edits to composer.json
+   composer update
+   
+   # Validate before committing
+   composer validate
+   ```
+
+3. **Common dependency management issues**:
+   - Out-of-sync composer.lock causes Docker build failures
+   - Always commit both composer.json and composer.lock together
+   - Use `composer update` not `composer install` after changing composer.json
+
 ### Adding New Metrics
 
 1. Create entity in `src/Entity/`
@@ -257,6 +288,57 @@ php bin/console doctrine:migrations:diff
 
 # Run migrations
 php bin/console doctrine:migrations:migrate
+```
+
+### Development Tools
+
+#### Setup Validation Script
+
+Use the validation script to check your development environment:
+
+```bash
+# Run comprehensive setup validation
+./scripts/validate-setup.sh
+
+# The script checks:
+# - Required files exist (composer.json, composer.lock, etc.)
+# - Composer configuration is valid
+# - Environment variables are configured
+# - PHP version compatibility
+# - Symfony console functionality
+```
+
+### Troubleshooting
+
+#### Docker Build Failures
+
+**Composer exit code 4**: Usually indicates composer.lock is out of sync
+```bash
+# Fix by updating lock file
+composer update
+composer validate
+
+# Or run the validation script
+./scripts/validate-setup.sh
+```
+
+**Permission errors**: Check Docker user/group configuration
+```bash
+# In Dockerfile, ensure proper ownership
+RUN chown -R $USERNAME:$USERNAME /app
+```
+
+#### Common Development Issues
+
+**Out-of-sync dependencies**: Always run validation before building
+```bash
+./scripts/validate-setup.sh
+```
+
+**Missing environment variables**: Copy and configure .env file
+```bash
+cp .env.example .env
+# Edit .env with your actual values
 ```
 
 ## 🤝 Contributing

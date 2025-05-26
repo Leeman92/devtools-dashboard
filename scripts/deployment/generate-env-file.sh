@@ -85,7 +85,7 @@ cat > .env.production << EOF
 
 # Symfony Environment
 APP_ENV=production
-APP_DEBUG=false
+APP_DEBUG=true
 
 # Secrets from Vault
 APP_SECRET=${APP_SECRET}
