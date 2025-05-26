@@ -308,11 +308,20 @@ jobs:
             fi
 
             echo "Setting up network..."
-            docker network create --driver overlay dashboard-network || true
+            if ! docker network ls | grep -q dashboard-network; then
+              docker network create --driver overlay dashboard-network
+              echo "✅ Network created"
+            else
+              echo "✅ Network already exists"
+            fi
 
             echo "Setting up environment configuration..."
-            # Remove old config if it exists
-            docker config rm dashboard_env 2>/dev/null || true
+            # Remove old config if it exists (force removal)
+            if docker config ls | grep -q dashboard_env; then
+              echo "🔄 Removing existing environment configuration..."
+              docker config rm dashboard_env
+              echo "✅ Old configuration removed"
+            fi
             
             # Create new config from environment file
             if [ -f "/home/patrick/dashboard/.env.production" ]; then

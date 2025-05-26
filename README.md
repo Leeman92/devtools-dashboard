@@ -1,21 +1,25 @@
 # DevTools Dashboard
 
-A full-stack web application for monitoring Docker containers and CI jobs.
+A full-stack web application for monitoring Docker containers and CI jobs with HashiCorp Vault integration for secrets management.
 
 ## Features
 
 - Real-time Docker container monitoring
 - CI job status tracking from GitHub
 - Modern, responsive UI with Tailwind CSS
-- RESTful API built with Laravel 10
+- RESTful API built with Symfony 7.2
+- HashiCorp Vault integration for secure secrets management
+- Docker Swarm deployment with high availability
+- Comprehensive CI/CD pipeline with GitHub Actions
 
 ## Tech Stack
 
 ### Backend
-- Laravel 10
-- PHP 8.4
+- Symfony 7.2
+- PHP 8.4+ with FrankenPHP
 - MySQL 8.0
 - Docker SDK for PHP
+- HashiCorp Vault for secrets management
 
 ### Frontend
 - React
@@ -24,12 +28,20 @@ A full-stack web application for monitoring Docker containers and CI jobs.
 - Tailwind CSS
 - shadcn/ui
 
+### Infrastructure
+- Docker & Docker Compose
+- Docker Swarm for production
+- GitHub Actions for CI/CD
+- HashiCorp Vault for secrets management
+- Nginx for reverse proxy
+
 ## Prerequisites
 
 - Docker and Docker Compose
 - Node.js 20+
-- PHP 8.4
+- PHP 8.4+
 - Git
+- HashiCorp Vault (for production)
 
 ## Quick Start
 
@@ -42,15 +54,19 @@ cd devtools-dashboard
 2. Set up environment variables:
 ```bash
 # Backend
-cp src/backend/.env.example src/backend/.env
+cp backend/.env.example backend/.env
 
-# Frontend
-cp src/frontend/.env.example src/frontend/.env
+# Frontend (if exists)
+cp frontend/.env.example frontend/.env
 ```
 
 3. Start the application:
 ```bash
+# Development
 docker compose up -d
+
+# Or use the Makefile
+make up
 ```
 
 4. Access the application:
@@ -59,40 +75,103 @@ docker compose up -d
 
 ## Development
 
-### Backend
+### Backend (Symfony)
 ```bash
-cd src/backend
+cd backend
 composer install
-php artisan key:generate
-php artisan migrate
+php bin/console cache:clear
 ```
 
-### Frontend
+### Using Makefile Commands
 ```bash
-cd src/frontend
-npm install
-npm run dev
+# Start all services
+make up
+
+# Stop all services
+make down
+
+# View logs
+make logs
+
+# Run tests
+make test
+
+# Build and deploy
+make build
+make deploy
+```
+
+## Project Structure
+
+```
+devtools-dashboard/
+├── backend/              # Symfony 7.2 application
+│   ├── .docker/         # Docker configuration
+│   ├── src/             # Application source code
+│   ├── config/          # Symfony configuration
+│   ├── public/          # Web root
+│   ├── var/             # Cache, logs, sessions
+│   └── tests/           # Test suites
+├── .github/workflows/   # CI/CD pipelines
+├── docs/               # Documentation
+├── nginx/              # Nginx configuration
+├── scripts/            # Utility scripts
+├── docker-stack.yml    # Docker Swarm configuration
+├── docker-compose.yml  # Development environment
+└── Makefile           # Development commands
 ```
 
 ## Documentation
 
-- [Backend Documentation](docs/backend/README.md)
-- [Frontend Documentation](docs/frontend/README.md)
-- [Project Rules](docs/PROJECT_RULES.md)
+- [Development Guide](docs/DEVELOPMENT.md) - Comprehensive development workflow and standards
+- [Deployment Guide](docs/DEPLOYMENT.md) - Multi-environment deployment procedures
+- [Vault Setup Guide](docs/vault-setup.md) - HashiCorp Vault configuration
+- [Vault Secrets Template](docs/vault-secrets-template.md) - Secrets management template
+- [Project Rules](.cursorrules) - Coding standards and best practices
+
+## Security
+
+This project follows security best practices:
+- All secrets managed through HashiCorp Vault
+- No hardcoded credentials in code
+- Container security with non-root users
+- HTTPS everywhere in production
+- Regular security updates and vulnerability scanning
 
 ## Testing
 
 ### Backend
 ```bash
-cd src/backend
-php artisan test
+cd backend
+php bin/phpunit
 ```
 
-### Frontend
+### Using Makefile
 ```bash
-cd src/frontend
-npm test
+make test
 ```
+
+## Deployment
+
+### Development
+```bash
+docker compose up -d
+```
+
+### Production (Docker Swarm)
+```bash
+docker stack deploy -c docker-stack.yml devtools-dashboard
+```
+
+See the [deployment documentation](docs/vault-setup.md) for detailed production setup instructions.
+
+## Contributing
+
+1. Follow the coding standards defined in `.cursorrules`
+2. Use semantic versioning for releases
+3. All code must pass tests and security scans
+4. Secrets must be managed through Vault
+5. Follow the DevOps best practices outlined in the project rules
 
 ## License
 
