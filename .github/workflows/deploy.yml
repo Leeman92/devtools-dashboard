@@ -33,8 +33,12 @@ jobs:
               url: process.env.ACTIONS_ID_TOKEN_REQUEST_URL
             }
 
-      - name: TEMP DEBUG – Print GitHub OIDC JWT
-        run: echo "${{ steps.generate_token.outputs.token }}"
+        - name: TEMP DEBUG – Request and print GitHub OIDC token
+          id: print_jwt
+          run: |
+            echo "Requesting OIDC token from GitHub..."
+            echo "TOKEN: ${{ steps.generate_token.outputs.token }}"
+            echo "URL: ${{ steps.generate_token.outputs.url }}"
 
       - name: Read secrets from Vault
         run: |
