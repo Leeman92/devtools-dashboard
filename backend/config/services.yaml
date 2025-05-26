@@ -4,6 +4,17 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Docker configuration
+    docker.socket_path: '%env(string:DOCKER_SOCKET_PATH)%'
+    
+    # GitHub configuration
+    github.token: '%env(string:GITHUB_TOKEN)%'
+    github.api_url: '%env(default:github_api_url_default:string:GITHUB_API_URL)%'
+    github_api_url_default: 'https://api.github.com'
+    
+    # Infrastructure monitoring
+    prometheus.url: '%env(string:PROMETHEUS_URL)%'
+    grafana.url: '%env(string:GRAFANA_URL)%'
 
 services:
     # default configuration for services in *this* file
@@ -20,5 +31,31 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+    # Controllers are imported separately to make sure services can be injected
+    # as action arguments even if you don't extend any base controller class
+    App\Controller\:
+        resource: '../src/Controller/'
+        tags: ['controller.service_arguments']
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Service configurations
+    App\Service\DockerService:
+        arguments:
+            $dockerSocketPath: '%docker.socket_path%'
+
+    App\Service\GitHubService:
+        arguments:
+            $githubToken: '%github.token%'
+            $githubApiUrl: '%github.api_url%'
+
+    # HTTP Client configuration
+    Symfony\Contracts\HttpClient\HttpClientInterface:
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments:
+            - 
+                timeout: 30
+                max_redirects: 3
+                headers:
+                    'User-Agent': 'DevTools-Dashboard/1.0'
