@@ -16,7 +16,7 @@ echo "📁 Current directory: $(pwd)"
 
 # Check if required files exist
 echo "📋 Checking required files..."
-required_files=("composer.json" "composer.lock" "symfony.lock" ".env.example")
+required_files=("composer.json" "composer.lock" "symfony.lock")
 for file in "${required_files[@]}"; do
     if [[ -f "$file" ]]; then
         echo "✅ $file exists"

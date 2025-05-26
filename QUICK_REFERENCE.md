@@ -10,8 +10,7 @@
 ./scripts/docker-php.sh install
 
 # 3. Configure environment
-cp backend/.env.example backend/.env
-# Edit .env with your values
+# Create backend/.env with your values (see documentation for required variables)
 
 # 4. Setup database (using Docker wrapper)
 ./scripts/docker-php.sh create-db
