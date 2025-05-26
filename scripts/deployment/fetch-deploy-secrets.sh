@@ -77,8 +77,26 @@ else
 fi
 
 if fetch_vault_secret "SSH_PRIVATE_KEY" "ci/github"; then
-    SSH_KEY="$VAULT_SECRET_VALUE"
-    echo "::add-mask::$SSH_KEY"
+    # Create a temporary file to handle the SSH key securely
+    SSH_KEY_FILE=$(mktemp)
+    echo "$VAULT_SECRET_VALUE" > "$SSH_KEY_FILE"
+    
+    # Mask each line of the SSH key to prevent any leakage
+    while IFS= read -r line; do
+        if [ -n "$line" ]; then
+            echo "::add-mask::$line"
+        fi
+    done < "$SSH_KEY_FILE"
+    
+    # Export SSH key directly to GitHub environment without storing in variable
+    {
+        echo "SSH_PRIVATE_KEY<<__EOT__"
+        cat "$SSH_KEY_FILE"
+        echo "__EOT__"
+    } >> "$GITHUB_ENV"
+    
+    # Clean up the temporary file
+    rm -f "$SSH_KEY_FILE"
 else
     echo "💥 Failed to fetch SSH_PRIVATE_KEY - deployment cannot continue"
     exit 1
@@ -88,6 +106,5 @@ echo "SMALL DEBUG STATEMENT BY ME"
 # Export to GitHub environment (values already masked above)
 echo "SERVER_IP=$SERVER_IP" >> $GITHUB_ENV
 echo "SERVER_PORT=$SERVER_PORT" >> $GITHUB_ENV
-printf "SSH_PRIVATE_KEY<<__EOT__\n%s\n__EOT__\n" "$SSH_KEY" >> "$GITHUB_ENV"
 
 echo "✅ Deployment secrets retrieved and masked successfully" 
