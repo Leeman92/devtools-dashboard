@@ -21,8 +21,9 @@ FROM nginx:alpine AS production
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy nginx configurations
 COPY .docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY .docker/nginx-main.conf /etc/nginx/nginx.conf
 
 # Create nginx user and set permissions
 RUN addgroup -g 1000 frontend && \
@@ -31,8 +32,9 @@ RUN addgroup -g 1000 frontend && \
     chown -R frontend:frontend /var/cache/nginx && \
     chown -R frontend:frontend /var/log/nginx && \
     chown -R frontend:frontend /etc/nginx/conf.d && \
-    touch /var/run/nginx.pid && \
-    chown -R frontend:frontend /var/run/nginx.pid
+    chown -R frontend:frontend /var/run && \
+    mkdir -p /tmp/nginx && \
+    chown -R frontend:frontend /tmp/nginx
 
 # Switch to non-root user
 USER frontend
