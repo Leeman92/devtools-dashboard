@@ -1,27 +1,30 @@
 # DevTools Dashboard - Quick Reference
 
-## 🚀 Quick Start
+## 🎉 **FULLY WORKING APPLICATION** - Quick Start
 
 ```bash
-# 1. Setup Git hooks (for automatic validation)
-./scripts/setup-git-hooks.sh
+# 1. Start the complete development environment
+./scripts/dev.sh
 
-# 2. Validate setup
-./scripts/validate-setup.sh
+# 2. Access the application
+# Frontend: http://localhost:5173 (Beautiful React dashboard)
+# Backend API: http://localhost:80 (Symfony with Docker integration)
 
-# 3. Install dependencies (using Docker wrapper)
-./scripts/docker-php.sh install
+# 3. Fix container conflicts if needed
+docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
+./scripts/docker-node.sh dev
 
-# 4. Configure environment
-# Create backend/.env with your values (see documentation for required variables)
-
-# 5. Setup database (using Docker wrapper)
-./scripts/docker-php.sh create-db
-./scripts/docker-php.sh migrate
-
-# 6. Test the application (using Docker wrapper)
-./scripts/docker-php.sh collect-metrics
+# 4. Verify everything works
+curl http://localhost:80/api/docker/containers  # Should return actual container data
 ```
+
+## 🚀 **Working Features**
+
+- ✅ **Real-time Docker monitoring** - Live container status updates
+- ✅ **Beautiful React dashboard** - Modern UI with Tailwind CSS
+- ✅ **Authentication system** - JWT-based login/logout
+- ✅ **Hot reload development** - Both frontend and backend auto-update
+- ✅ **Docker API integration** - Full container monitoring capabilities
 
 ## 🐳 Docker Wrapper Script
 

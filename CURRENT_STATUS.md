@@ -9,6 +9,8 @@
 - **Beautiful UI**: Gradient cards (blue, green, orange) matching design ✅
 - **Responsive Design**: Works on all screen sizes ✅
 - **Full-Stack Integration**: Frontend ↔ Backend communication working ✅
+- **Authentication System**: JWT-based login/logout functionality ✅
+- **Development Environment**: Docker-first development with hot reload ✅
 
 ### 🚀 **Current Working Features**
 1. **API Endpoint**: `/api/docker/containers` returns actual container data
@@ -16,6 +18,8 @@
 3. **Navigation**: Sidebar with Dashboard, Containers, CI/CD, Repositories tabs
 4. **Stats Cards**: Live container count, CI status, recent commits
 5. **Container List**: Real-time status with color-coded badges
+6. **Authentication**: Login/logout with JWT tokens
+7. **Hot Reload**: Both frontend and backend auto-update on changes
 
 ## 🔧 **Development Environment**
 
@@ -27,19 +31,25 @@
 # Start backend only
 docker compose up -d
 
-# Start frontend only (after fixing container conflict)
+# Start frontend only
+./scripts/docker-node.sh dev
+
+# Fix container conflicts if needed
 docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 ./scripts/docker-node.sh dev
 ```
 
-### **Current Issue to Fix First**
-- **Container Name Conflict**: `devtools-frontend-dev` container already exists
-- **Quick Fix**: Run `docker stop devtools-frontend-dev && docker rm devtools-frontend-dev` before starting frontend
+### **Current Status**
+- **Backend**: Running on `http://localhost:80` with Docker API integration
+- **Frontend**: Running on `http://localhost:5173` with hot reload
+- **Database**: MariaDB 10.11 running on port 3306
+- **Container Monitoring**: Live Docker container status updates
 
 ## 📁 **Key Files & Architecture**
 
 ### **Frontend (React + TypeScript)**
 - **Main App**: `frontend/src/App.tsx` - Complete dashboard with sidebar navigation
+- **Components**: `frontend/src/components/` - UI components and authentication
 - **Tailwind Config**: `frontend/tailwind.config.js` - Working v3.4.0 with ES modules
 - **PostCSS Config**: `frontend/postcss.config.js` - Proper ES module syntax
 - **Vite Config**: `frontend/vite.config.ts` - API proxy to `http://172.17.0.1:80`
@@ -47,7 +57,10 @@ docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 
 ### **Backend (Symfony + PHP)**
 - **Docker Service**: `backend/src/Service/DockerService.php` - cURL-based Docker API
-- **API Controller**: Returns container data via `/api/docker/containers`
+- **API Controllers**: Multiple controllers for different endpoints
+  - `DashboardController.php` - Main dashboard API
+  - `AuthController.php` - Authentication endpoints
+  - `InfrastructureController.php` - Infrastructure monitoring
 - **Docker Socket**: Properly mounted and accessible with correct GID
 
 ### **Development Scripts**
@@ -57,22 +70,31 @@ docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 
 ## 🎯 **Immediate Next Steps (Priority Order)**
 
-### 1. **Fix Container Conflict** (30 seconds)
+### 1. **Enhanced Container Management** (High Priority)
 ```bash
-docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
-./scripts/docker-node.sh dev
+# Add these features to the dashboard:
+- Start/stop/restart containers with confirmation dialogs
+- View container logs in real-time
+- Container resource usage graphs (CPU, memory)
+- Container shell access (web terminal)
 ```
 
-### 2. **Verify Everything Still Works** (2 minutes)
-- Backend: `curl http://localhost:80/api/docker/containers`
-- Frontend: Open `http://localhost:5173` in browser
-- Check real-time updates and beautiful gradient cards
+### 2. **Real-time Monitoring Charts** (High Priority)
+```bash
+# Implement with Recharts library:
+- CPU/memory usage charts
+- Network statistics graphs
+- Historical data storage
+- WebSocket for real-time updates
+```
 
-### 3. **Next Development Priorities**
-1. **Authentication System**: JWT-based login/logout with protected routes
-2. **Container Management**: Start/stop/restart buttons for containers
-3. **Real-time Charts**: CPU/memory usage with Recharts library
-4. **CI/CD Integration**: GitHub Actions monitoring in CI/CD tab
+### 3. **Improved Development Experience** (Medium Priority)
+```bash
+# Fix container name conflicts permanently
+- Improve ./scripts/dev.sh cleanup logic
+- Better error handling and user feedback
+- Add comprehensive testing
+```
 
 ## 🛠️ **Technical Stack Summary**
 
@@ -86,8 +108,9 @@ docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 ### **Backend**
 - Symfony 7.2 + PHP 8.4
 - Docker API integration via cURL + Unix socket
+- JWT authentication system
 - FrankenPHP for production performance
-- MySQL 8.0 database
+- MariaDB 10.11 database
 
 ### **DevOps**
 - Docker-first development (no local dependencies)
@@ -101,21 +124,28 @@ docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 - **Project Rules**: `.cursorrules` - Full-stack coding standards and best practices
 - **TODO & Roadmap**: `TODO.md` - Detailed project status and next steps
 - **Main README**: `README.md` - Project overview and quick start
+- **Quick Reference**: `QUICK_REFERENCE.md` - Development commands and troubleshooting
 
 ## 🐛 **Known Issues & Solutions**
 
-### **Container Conflicts**
-- **Issue**: Frontend dev container name conflicts
-- **Fix**: `docker stop devtools-frontend-dev && docker rm devtools-frontend-dev`
+### **Container Name Conflicts** ⚠️ **ONGOING**
+- **Issue**: Frontend dev container name conflicts occasionally
+- **Quick Fix**: `docker stop devtools-frontend-dev && docker rm devtools-frontend-dev`
+- **Permanent Solution**: Improve container cleanup in `./scripts/dev.sh`
 
 ### **Tailwind CSS** ✅ **RESOLVED**
 - **Was**: Tailwind v4 incompatibility
 - **Fixed**: Downgraded to v3.4.0 with proper ES module syntax
 - **Status**: Working perfectly with beautiful gradients
 
-### **API Proxy** ✅ **WORKING**
+### **API Proxy** ✅ **RESOLVED**
 - **Configuration**: `172.17.0.1:80` in vite.config.ts
-- **Status**: Frontend-backend communication working
+- **Status**: Frontend-backend communication working perfectly
+
+### **Docker Socket Access** ✅ **RESOLVED**
+- **Was**: Production containers couldn't access Docker socket
+- **Fixed**: Proper Docker GID configuration in Dockerfile
+- **Status**: API returns actual container data
 
 ## 🎨 **Design System**
 
@@ -131,11 +161,12 @@ docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 
 ## 🚀 **When You Return**
 
-1. **Fix container conflict** (see commands above)
-2. **Start development environment**: `./scripts/dev.sh`
-3. **Verify dashboard works**: Check `http://localhost:5173`
-4. **Pick next feature**: Authentication, container management, or charts
-5. **Reference documentation**: All guides are comprehensive and up-to-date
+1. **Start development environment**: `./scripts/dev.sh`
+2. **Verify everything works**: 
+   - Frontend: `http://localhost:5173`
+   - Backend API: `curl http://localhost:80/api/docker/containers`
+3. **Pick next feature**: Container management, real-time charts, or WebSocket integration
+4. **Reference documentation**: All guides are comprehensive and up-to-date
 
 ## 💡 **Development Tips**
 
@@ -144,9 +175,25 @@ docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 - **TypeScript strict mode**: Proper type checking enabled
 - **Responsive design**: Mobile-first approach implemented
 - **Accessibility**: WCAG guidelines followed
+- **Authentication**: JWT-based system already implemented
+
+## 📊 **API Endpoints (Working)**
+
+### **Current Endpoints** ✅
+- `GET /api/docker/containers` - Returns actual container data
+- `POST /api/auth/login` - JWT authentication
+- `POST /api/auth/logout` - Session termination
+- `GET /api/infrastructure/health` - Health check with Docker connectivity
+
+### **Next Endpoints to Implement**
+- `POST /api/docker/containers/{id}/start` - Start container
+- `POST /api/docker/containers/{id}/stop` - Stop container
+- `POST /api/docker/containers/{id}/restart` - Restart container
+- `GET /api/docker/containers/{id}/logs` - Container logs
+- `GET /api/docker/containers/{id}/stats` - Real-time stats
 
 ---
 
 **Status**: ✅ **FULLY WORKING FULL-STACK APPLICATION**  
-**Last Updated**: May 26, 2025  
-**Next Session**: Fix container conflict → Continue with authentication system 
+**Last Updated**: May 27, 2025  
+**Next Session**: Add container management actions and real-time monitoring charts 
