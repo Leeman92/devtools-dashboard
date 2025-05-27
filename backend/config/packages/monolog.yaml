@@ -56,7 +56,7 @@ when@prod:
             info:
                 type: stream
                 path: php://stderr
-                level: "%env(default:info:LOG_LEVEL)%"
+                level: "%env(default:log_level_default:LOG_LEVEL)%"
                 formatter: monolog.formatter.json
                 channels: ["!event", "!doctrine", "!deprecation", "!docker", "!github", "!auth", "!metrics"]
             

@@ -141,27 +141,42 @@ For production environments, consider setting up log aggregation:
 
 ### Test Endpoints
 
-Use the dedicated test endpoints to verify logging is working:
+**Note**: Test endpoints are only publicly accessible in development environments. In production, they require authentication.
 
+#### Development/Local Testing:
 ```bash
 # Test all log levels
-curl -X GET https://dashboard.patricklehmann.dev/api/test/logging
+curl -X GET http://localhost:8000/api/test/logging
 
 # Test environment configuration
-curl -X GET https://dashboard.patricklehmann.dev/api/test/env
+curl -X GET http://localhost:8000/api/test/env
 
 # Test error handling and logging
-curl -X GET https://dashboard.patricklehmann.dev/api/test/error
+curl -X GET http://localhost:8000/api/test/error
 
 # Test 500 error logging
-curl -X GET https://dashboard.patricklehmann.dev/api/test/500
+curl -X GET http://localhost:8000/api/test/500
 
 # Test authentication logging
-curl -X POST https://dashboard.patricklehmann.dev/api/test/auth-test
+curl -X POST http://localhost:8000/api/test/auth-test
 
 # Test JWT configuration
-curl -X GET https://dashboard.patricklehmann.dev/api/test/jwt-test
+curl -X GET http://localhost:8000/api/test/jwt-test
 ```
+
+#### Production Testing (Requires Authentication):
+```bash
+# First, get a JWT token by logging in
+TOKEN=$(curl -s -X POST https://dashboard.patricklehmann.dev/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"your@email.com","password":"yourpassword"}' | jq -r '.token')
+
+# Then use the token to access test endpoints
+curl -X GET https://dashboard.patricklehmann.dev/api/test/logging \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+For security documentation, see [Security Endpoints Configuration](SECURITY_ENDPOINTS.md).
 
 ### Health Check Logging
 

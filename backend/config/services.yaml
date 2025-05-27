@@ -15,6 +15,9 @@ parameters:
     # Infrastructure monitoring
     prometheus.url: '%env(string:PROMETHEUS_URL)%'
     grafana.url: '%env(string:GRAFANA_URL)%'
+    
+    # Logging configuration
+    log_level_default: 'info'
 
 services:
     # default configuration for services in *this* file

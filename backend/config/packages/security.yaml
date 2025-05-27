@@ -20,12 +20,6 @@ security:
             stateless: true
             security: false
         
-        # Public test endpoints for debugging
-        test:
-            pattern: ^/api/test
-            stateless: true
-            security: false
-        
         # Public health endpoint
         health:
             pattern: ^/health
@@ -43,14 +37,10 @@ security:
             lazy: true
             provider: app_user_provider
 
-    # Easy way to control access for large sections of your site
-    # Note: Only the *first* access control that matches will be used
-    access_control:
-        - { path: ^/api/auth/(login|register), roles: PUBLIC_ACCESS }
-        - { path: ^/api/test, roles: PUBLIC_ACCESS }
-        - { path: ^/health, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth, roles: ROLE_USER }
-        - { path: ^/api, roles: ROLE_USER }
+    # Access control is defined in environment-specific files:
+    # - config/packages/dev/security.yaml (development)
+    # - config/packages/test/security.yaml (test)
+    # - config/packages/prod/security.yaml (production)
 
 when@test:
     security:

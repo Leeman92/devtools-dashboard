@@ -1,0 +1,8 @@
+security:
+    # Production access control - test endpoints are protected
+    access_control:
+        - { path: ^/api/auth/(login|register), roles: PUBLIC_ACCESS }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/test, roles: ROLE_USER }  # Protected in production
+        - { path: ^/api/auth, roles: ROLE_USER }
+        - { path: ^/api, roles: ROLE_USER } 
