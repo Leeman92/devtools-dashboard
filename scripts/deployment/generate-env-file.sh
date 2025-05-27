@@ -189,9 +189,11 @@ APP_TIMEZONE=UTC
 TRUSTED_PROXIES=127.0.0.1,REMOTE_ADDR
 TRUSTED_HOSTS='^dashboard\.patricklehmann\.dev$'
 
-# Logging
+# Logging Configuration
 LOG_LEVEL=info
+LOG_LEVEL_DEFAULT=info
 LOG_CHANNEL=stderr
+MONOLOG_JSON_FORMAT=true
 EOF
 
 echo ""

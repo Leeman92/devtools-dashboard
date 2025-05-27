@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Service\DockerService;
 use App\Service\GitHubService;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,6 +21,7 @@ final class DashboardController extends AbstractController
     public function __construct(
         private readonly DockerService $dockerService,
         private readonly GitHubService $githubService,
+        private readonly LoggerInterface $logger,
     ) {}
 
     #[Route('/', name: 'dashboard_home', methods: ['GET'])]
@@ -36,6 +38,11 @@ final class DashboardController extends AbstractController
     #[Route('/health', name: 'health_check', methods: ['GET'])]
     public function healthCheck(): JsonResponse
     {
+        $this->logger->info('Health check requested', [
+            'environment' => $this->getParameter('kernel.environment'),
+            'timestamp' => new \DateTimeImmutable(),
+        ]);
+
         return $this->json([
             'status' => 'healthy',
             'timestamp' => new \DateTimeImmutable(),
@@ -46,6 +53,10 @@ final class DashboardController extends AbstractController
     #[Route('/api/dashboard', name: 'api_dashboard', methods: ['GET'])]
     public function dashboard(): JsonResponse
     {
+        $this->logger->info('Dashboard accessed', [
+            'timestamp' => new \DateTimeImmutable(),
+        ]);
+
         return $this->json([
             'dashboard' => [
                 'title' => 'DevTools Dashboard',
@@ -57,6 +68,22 @@ final class DashboardController extends AbstractController
                     'CI/CD pipeline status',
                 ],
             ],
+            'timestamp' => new \DateTimeImmutable(),
+        ]);
+    }
+
+    #[Route('/api/test-logging', name: 'api_test_logging', methods: ['GET'])]
+    public function testLogging(): JsonResponse
+    {
+        $this->logger->debug('Debug level log message');
+        $this->logger->info('Info level log message', ['test' => true]);
+        $this->logger->notice('Notice level log message');
+        $this->logger->warning('Warning level log message', ['warning' => 'test']);
+        $this->logger->error('Error level log message', ['error' => 'test']);
+
+        return $this->json([
+            'message' => 'Logging test completed',
+            'levels_tested' => ['debug', 'info', 'notice', 'warning', 'error'],
             'timestamp' => new \DateTimeImmutable(),
         ]);
     }

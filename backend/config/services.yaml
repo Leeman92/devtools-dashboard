@@ -37,18 +37,30 @@ services:
         resource: '../src/Controller/'
         tags: ['controller.service_arguments']
 
+    # Controller-specific logger configurations
+    App\Controller\AuthController:
+        arguments:
+            $logger: '@monolog.logger.auth'
+
+    # Command-specific logger configurations
+    App\Command\CollectMetricsCommand:
+        arguments:
+            $logger: '@monolog.logger.metrics'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
-    # Service configurations
+    # Service configurations with dedicated loggers
     App\Service\DockerService:
         arguments:
             $dockerSocketPath: '%docker.socket_path%'
+            $logger: '@monolog.logger.docker'
 
     App\Service\GitHubService:
         arguments:
             $githubToken: '%github.token%'
             $githubApiUrl: '%github.api_url%'
+            $logger: '@monolog.logger.github'
 
     # HTTP Client configuration
     Symfony\Contracts\HttpClient\HttpClientInterface:

@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,6 +25,7 @@ class AuthController extends AbstractController
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly JWTTokenManagerInterface $jwtManager,
         private readonly ValidatorInterface $validator,
+        private readonly LoggerInterface $logger,
     ) {}
 
     #[Route('/register', name: 'api_auth_register', methods: ['POST'])]
@@ -42,6 +44,11 @@ class AuthController extends AbstractController
             ->findOneBy(['email' => $data['email']]);
 
         if ($existingUser) {
+            $this->logger->warning('Registration attempt with existing email', [
+                'email' => $data['email'],
+                'ip' => $request->getClientIp(),
+            ]);
+            
             return new JsonResponse([
                 'error' => 'User with this email already exists'
             ], Response::HTTP_CONFLICT);
@@ -77,6 +84,12 @@ class AuthController extends AbstractController
         // Generate JWT token
         $token = $this->jwtManager->create($user);
 
+        $this->logger->info('User registered successfully', [
+            'user_id' => $user->getId(),
+            'email' => $user->getEmail(),
+            'ip' => $request->getClientIp(),
+        ]);
+
         return new JsonResponse([
             'message' => 'User registered successfully',
             'token' => $token,
@@ -105,6 +118,11 @@ class AuthController extends AbstractController
             ->findOneBy(['email' => $data['email']]);
 
         if (!$user) {
+            $this->logger->warning('Login attempt with non-existent email', [
+                'email' => $data['email'],
+                'ip' => $request->getClientIp(),
+            ]);
+            
             return new JsonResponse([
                 'error' => 'Invalid credentials'
             ], Response::HTTP_UNAUTHORIZED);
@@ -112,6 +130,12 @@ class AuthController extends AbstractController
 
         // Verify password
         if (!$this->passwordHasher->isPasswordValid($user, $data['password'])) {
+            $this->logger->warning('Login attempt with invalid password', [
+                'user_id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'ip' => $request->getClientIp(),
+            ]);
+            
             return new JsonResponse([
                 'error' => 'Invalid credentials'
             ], Response::HTTP_UNAUTHORIZED);
@@ -119,6 +143,12 @@ class AuthController extends AbstractController
 
         // Generate JWT token
         $token = $this->jwtManager->create($user);
+
+        $this->logger->info('User logged in successfully', [
+            'user_id' => $user->getId(),
+            'email' => $user->getEmail(),
+            'ip' => $request->getClientIp(),
+        ]);
 
         return new JsonResponse([
             'message' => 'Login successful',
