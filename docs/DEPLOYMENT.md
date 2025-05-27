@@ -175,406 +175,400 @@ curl https://staging.yourdomain.com/api/health
 
 ## Production Deployment
 
-Production uses Docker Swarm with multiple nodes for high availability.
+This guide covers the complete production deployment process for the DevTools Dashboard, including external MySQL setup, automated CI/CD deployment, and post-deployment configuration.
 
-### Prerequisites
+## 🎯 Overview
 
-- Multi-node Docker Swarm cluster
-- Load balancer (external or Docker Swarm routing mesh)
-- HashiCorp Vault cluster
-- SSL certificates
-- Monitoring and logging infrastructure
+The production deployment uses:
+- **External MySQL**: Standalone MariaDB container with Docker volumes
+- **Docker Swarm**: Container orchestration for high availability
+- **GitHub Actions**: Automated CI/CD pipeline
+- **HashiCorp Vault**: Secure secrets management
+- **Nginx**: SSL termination and reverse proxy
 
-### Vault Setup
+## 📋 Prerequisites
 
-Before deployment, configure all required secrets in HashiCorp Vault:
+### Infrastructure Requirements
+- Docker Swarm cluster initialized
+- HashiCorp Vault server configured and accessible
+- Domain name with DNS pointing to your server
+- SSL certificate (Let's Encrypt recommended)
 
+### Access Requirements
+- SSH access to production server
+- GitHub repository with Actions enabled
+- Harbor container registry access
+- Vault authentication credentials
+
+### Environment Variables
 ```bash
-# Interactive setup of all required secrets
-./scripts/deployment/setup-vault-secrets.sh production
-
-# Or manually configure secrets
-vault kv put secret/dashboard/production \
-  APP_SECRET="$(openssl rand -hex 32)" \
-  DATABASE_URL="mysql://dashboard_user:secure_password@mariadb:3306/dashboard" \
-  DOCKER_SOCKET_PATH="/var/run/docker.sock" \
-  GITHUB_TOKEN="ghp_your_personal_access_token_here" \
-  GITHUB_API_URL="https://api.github.com" \
-  PROMETHEUS_URL="http://prometheus:9090" \
-  GRAFANA_URL="http://grafana:3000"
+export VAULT_ADDR="https://vault.patricklehmann.dev"
+export VAULT_TOKEN="your-vault-token"
 ```
 
-### Pre-deployment Checklist
+## 🚀 Deployment Process
 
-- [ ] All secrets configured in Vault: `./scripts/deployment/setup-vault-secrets.sh production`
-- [ ] Environment file generated and validated: `./scripts/deployment/generate-env-file.sh`
-- [ ] SSL certificates valid and configured
-- [ ] Database migrations tested
-- [ ] Docker socket access configured for production
-- [ ] Backup procedures verified
-- [ ] Monitoring alerts configured
-- [ ] Rollback plan prepared
-- [ ] Pre-commit validation passes: `./.githooks/pre-commit`
+### Phase 1: Infrastructure Setup
 
-### Deployment Steps
-
-1. **Prepare the environment**:
+#### 1.1 Initialize Docker Swarm
 ```bash
-# Set production environment
-export ENVIRONMENT=production
+# On your production server
+docker swarm init
 
-# Verify Vault connectivity
-vault status
-
-# Check Docker Swarm status
-docker node ls
+# Note the join token for additional nodes (if needed)
+docker swarm join-token worker
 ```
 
-2. **Run database migrations** (if needed):
+#### 1.2 Set Up External MySQL
 ```bash
-# Connect to a manager node
-docker run --rm \
-  --network devtools-dashboard_backend \
-  -e DATABASE_URL="${DATABASE_URL}" \
-  harbor.patricklehmann.dev/dashboard/dashboard:latest \
-  php bin/console doctrine:migrations:migrate --no-interaction
+# Run the automated MySQL setup script
+./scripts/deployment/setup-standalone-mysql.sh production
 ```
 
-3. **Deploy the application**:
-```bash
-# Deploy with zero-downtime rolling update
-docker stack deploy -c docker-stack.yml devtools-dashboard
+This script automatically:
+- ✅ Generates secure 32-character passwords
+- ✅ Creates MariaDB container with proper configuration
+- ✅ Sets up `dashboard` database and user
+- ✅ Stores all credentials in HashiCorp Vault
+- ✅ Configures Docker networking for Swarm
 
-# Monitor deployment progress
-watch docker service ls
+#### 1.3 Configure Nginx (Optional)
+If using external Nginx for SSL termination:
+```bash
+# Copy Nginx configuration
+sudo cp nginx/dashboard.patricklehmann.dev.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/dashboard.patricklehmann.dev.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-4. **Verify deployment**:
+### Phase 2: Application Deployment
+
+#### 2.1 Automated Deployment (Recommended)
+The easiest way to deploy is via GitHub Actions:
+
+```bash
+# Commit and push your changes
+git add .
+git commit -m "feat: production deployment"
+git push origin main
+```
+
+The GitHub Actions pipeline will:
+1. **Build**: Create Docker images for backend and frontend
+2. **Push**: Upload images to Harbor registry
+3. **Deploy**: Deploy to production server via SSH
+4. **Configure**: Generate environment files from Vault
+
+#### 2.2 Manual Deployment (Alternative)
+If you need to deploy manually:
+
+```bash
+# Generate environment file from Vault
+./scripts/deployment/generate-env-file.sh
+
+# Deploy the Docker stack
+docker stack deploy -c docker-stack.yml dashboard
+
+# Verify deployment
+docker service ls
+```
+
+### Phase 3: Database Initialization
+
+#### 3.1 Run Database Migrations
+```bash
+# Find the backend container
+docker ps | grep backend
+
+# Run Doctrine migrations
+docker exec <backend-container-name> php bin/console doctrine:migrations:migrate --no-interaction
+
+# Verify tables were created
+docker exec dashboard-mysql mysql -u dashboard -p -e "USE dashboard; SHOW TABLES;"
+```
+
+#### 3.2 Create Initial User
+```bash
+# Interactive user creation
+docker exec -it <backend-container-name> php bin/console app:create-user
+
+# Non-interactive user creation
+docker exec <backend-container-name> php bin/console app:create-user \
+  --email="admin@dashboard.local" \
+  --name="Admin User" \
+  --password="secure-password" \
+  --admin
+```
+
+### Phase 4: Verification
+
+#### 4.1 Service Health Check
 ```bash
 # Check all services are running
 docker service ls
 
-# Verify health checks
-curl https://yourdomain.com/api/health
+# Check service logs
+docker service logs dashboard_dashboard-backend
+docker service logs dashboard_dashboard-frontend
 
-# Check application logs
-docker service logs devtools-dashboard_backend
+# Check MySQL connectivity
+docker exec dashboard-mysql mysqladmin ping -u dashboard -p
 ```
 
-### Production Configuration
+#### 4.2 Application Access
+- **Frontend**: https://dashboard.patricklehmann.dev
+- **API Health**: https://dashboard.patricklehmann.dev/api/health
+- **Login**: Use the credentials created in Phase 3.2
 
-#### docker-stack.yml (Production)
+## 🔧 Configuration Details
+
+### Docker Stack Services
+
 ```yaml
-version: '3.8'
-
 services:
-  backend:
-    image: harbor.patricklehmann.dev/dashboard/dashboard:${VERSION:-latest}
-    deploy:
-      replicas: 3
-      update_config:
-        parallelism: 1
-        delay: 10s
-        failure_action: rollback
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-    environment:
-      - APP_ENV=prod
-      - VAULT_ADDR=${VAULT_ADDR}
-      - VAULT_ROLE_ID=${VAULT_ROLE_ID}
-      - VAULT_SECRET_ID=${VAULT_SECRET_ID}
-    networks:
-      - backend
-      - frontend
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  nginx:
-    image: nginx:alpine
-    deploy:
-      replicas: 2
-      update_config:
-        parallelism: 1
-        delay: 10s
+  dashboard-frontend:
+    image: harbor.patricklehmann.dev/dashboard/frontend:latest
     ports:
-      - "80:80"
-      - "443:443"
+      - "3001:80"
     networks:
-      - frontend
-    configs:
-      - source: nginx_config
-        target: /etc/nginx/nginx.conf
+      - dashboard-network
+
+  dashboard-backend:
+    image: harbor.patricklehmann.dev/dashboard/backend:latest
+    networks:
+      - dashboard-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
 
 networks:
-  backend:
-    driver: overlay
-  frontend:
-    driver: overlay
-
-configs:
-  nginx_config:
+  dashboard-network:
     external: true
 ```
 
-## CI/CD Pipeline
+### Environment Variables
 
-The project uses GitHub Actions for automated deployment.
-
-### Pipeline Stages
-
-1. **Code Quality Checks**
-   - Linting (PHP CS Fixer)
-   - Static analysis (PHPStan)
-   - Security scanning
-
-2. **Testing**
-   - Unit tests
-   - Integration tests
-   - Coverage reporting
-
-3. **Build**
-   - Docker image build
-   - Multi-stage optimization
-   - Security scanning
-
-4. **Deploy**
-   - Staging deployment (automatic on main branch)
-   - Production deployment (manual approval)
-
-### Deployment Workflow
-
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-  release:
-    types: [published]
-
-jobs:
-  deploy-staging:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to Staging
-        run: |
-          # Automated staging deployment
-          
-  deploy-production:
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Deploy to Production
-        run: |
-          # Production deployment with approval
-```
-
-## Monitoring and Health Checks
-
-### Health Check Endpoints
-
-```php
-// src/Controller/HealthController.php
-#[Route('/api/health', name: 'health_check', methods: ['GET'])]
-public function healthCheck(): JsonResponse
-{
-    return $this->json([
-        'status' => 'healthy',
-        'timestamp' => time(),
-        'version' => $this->getParameter('app.version'),
-        'environment' => $this->getParameter('kernel.environment'),
-    ]);
-}
-```
-
-### Monitoring Stack
-
-- **Application Metrics**: Symfony Profiler, custom metrics
-- **Infrastructure Metrics**: Docker stats, system metrics
-- **Logging**: Centralized logging with structured data
-- **Alerting**: Critical error notifications
-
-### Health Check Commands
+All environment variables are managed through HashiCorp Vault:
 
 ```bash
-# Check application health
-curl https://yourdomain.com/api/health
+# Core application settings
+APP_ENV=prod
+APP_SECRET=<generated-secret>
+DATABASE_URL=mysql://dashboard:<password>@dashboard-mysql:3306/dashboard
 
-# Check Docker service health
-docker service ps devtools-dashboard_backend
+# JWT Authentication
+JWT_SECRET_KEY=<vault-managed>
+JWT_PUBLIC_KEY=<vault-managed>
+JWT_PASSPHRASE=<vault-managed>
 
-# Check container health
-docker ps --filter "health=unhealthy"
+# External services
+HARBOR_USERNAME=<vault-managed>
+HARBOR_PASSWORD=<vault-managed>
 ```
 
-## Rollback Procedures
+### Security Configuration
 
-### Automatic Rollback
+- **No exposed backend ports**: Backend only accessible via internal network
+- **SSL termination**: Handled by external Nginx or Docker Swarm ingress
+- **Secrets management**: All sensitive data stored in Vault
+- **Container security**: Non-root users, read-only Docker socket
 
-Docker Swarm can automatically rollback failed deployments:
+## 🛠️ Maintenance
 
-```yaml
-deploy:
-  update_config:
-    failure_action: rollback
-    monitor: 60s
-```
+### Regular Tasks
 
-### Manual Rollback
-
-1. **Identify the previous version**:
+#### Daily
 ```bash
-# List recent deployments
+# Check service health
 docker service ls
-docker service ps devtools-dashboard_backend
+
+# Monitor logs for errors
+docker service logs --tail=100 dashboard_dashboard-backend
 ```
 
-2. **Rollback to previous version**:
+#### Weekly
 ```bash
-# Rollback service
-docker service rollback devtools-dashboard_backend
+# Backup database
+docker exec dashboard-mysql mysqldump -u root -p dashboard > backup-$(date +%Y%m%d).sql
 
-# Or deploy specific version
-docker service update --image harbor.patricklehmann.dev/dashboard/dashboard:v1.2.3 devtools-dashboard_backend
-```
-
-3. **Verify rollback**:
-```bash
-# Check service status
-docker service ps devtools-dashboard_backend
-
-# Verify application health
-curl https://yourdomain.com/api/health
-```
-
-### Database Rollback
-
-If database migrations need to be rolled back:
-
-```bash
-# Connect to database container
-docker exec -it $(docker ps -q -f name=database) mysql -u root -p
-
-# Or use Doctrine migrations
-docker run --rm \
-  --network devtools-dashboard_backend \
-  -e DATABASE_URL="${DATABASE_URL}" \
-  harbor.patricklehmann.dev/dashboard/dashboard:v1.2.3 \
-  php bin/console doctrine:migrations:migrate prev --no-interaction
-```
-
-## Troubleshooting
-
-### Common Deployment Issues
-
-1. **Service won't start**:
-```bash
-# Check service logs
-docker service logs devtools-dashboard_backend
-
-# Check node resources
-docker node ls
+# Check disk usage
+df -h
 docker system df
 ```
 
-2. **Health check failures**:
+#### Monthly
 ```bash
-# Check container health
-docker ps --filter "health=unhealthy"
+# Update Docker images (via GitHub Actions)
+git push origin main
 
-# Inspect health check logs
-docker inspect <container_id>
+# Rotate Vault tokens
+vault auth -method=userpass username=your-username
+
+# Review security logs
+docker service logs dashboard_dashboard-backend | grep -i error
 ```
 
-3. **Vault connection issues**:
-```bash
-# Test Vault connectivity
-vault status
+### Scaling
 
-# Check Vault authentication
-vault auth -method=approle role_id=${VAULT_ROLE_ID} secret_id=${VAULT_SECRET_ID}
+#### Horizontal Scaling
+```bash
+# Scale backend service
+docker service scale dashboard_dashboard-backend=3
+
+# Scale frontend service
+docker service scale dashboard_dashboard-frontend=2
 ```
 
-4. **Database connection issues**:
-```bash
-# Check database service
-docker service ps devtools-dashboard_database
+#### Resource Limits
+```yaml
+deploy:
+  resources:
+    limits:
+      cpus: '1.0'
+      memory: 512M
+    reservations:
+      cpus: '0.5'
+      memory: 256M
+```
 
-# Test database connection
-docker run --rm --network devtools-dashboard_backend mysql:8.0 \
-  mysql -h database -u root -p -e "SELECT 1"
+## 🔍 Troubleshooting
+
+### Common Issues
+
+#### Service Won't Start
+```bash
+# Check service status
+docker service ps dashboard_dashboard-backend --no-trunc
+
+# Check logs
+docker service logs dashboard_dashboard-backend
+
+# Check node resources
+docker node ls
+docker node inspect <node-id>
+```
+
+#### Database Connection Issues
+```bash
+# Test MySQL connectivity
+docker exec dashboard-mysql mysqladmin ping -u dashboard -p
+
+# Check network connectivity
+docker exec <backend-container> ping dashboard-mysql
+
+# Verify Vault secrets
+vault kv get secret/dashboard/production
+```
+
+#### SSL/Nginx Issues
+```bash
+# Check Nginx configuration
+sudo nginx -t
+
+# Check SSL certificate
+openssl x509 -in /etc/letsencrypt/live/dashboard.patricklehmann.dev/fullchain.pem -text -noout
+
+# Check Nginx logs
+sudo tail -f /var/log/nginx/error.log
 ```
 
 ### Performance Issues
 
-1. **High CPU usage**:
+#### High Memory Usage
 ```bash
-# Check container stats
+# Check container memory usage
 docker stats
 
-# Scale services if needed
-docker service scale devtools-dashboard_backend=5
+# Check MySQL memory usage
+docker exec dashboard-mysql mysql -u root -p -e "SHOW STATUS LIKE 'Innodb_buffer_pool%';"
 ```
 
-2. **Memory issues**:
+#### Slow Response Times
 ```bash
-# Check memory usage
-docker system df
-docker stats --no-stream
+# Check application logs
+docker service logs dashboard_dashboard-backend | grep -i slow
 
-# Restart services if needed
-docker service update --force devtools-dashboard_backend
+# Check MySQL slow queries
+docker exec dashboard-mysql mysql -u root -p -e "SHOW VARIABLES LIKE 'slow_query_log';"
 ```
 
-### Logging and Debugging
+## 🔒 Security
+
+### Security Checklist
+
+- [ ] All secrets stored in Vault (no plaintext credentials)
+- [ ] SSL/TLS enabled for all external communication
+- [ ] Docker socket mounted read-only
+- [ ] Services run as non-root users
+- [ ] Network segmentation implemented
+- [ ] Regular security updates applied
+- [ ] Backup encryption enabled
+- [ ] Access logs monitored
+
+### Security Updates
 
 ```bash
-# Application logs
-docker service logs -f devtools-dashboard_backend
+# Update base images (triggers rebuild via GitHub Actions)
+git commit -m "security: update base images" --allow-empty
+git push origin main
 
-# System logs
-journalctl -u docker.service
-
-# Container inspection
-docker inspect <container_id>
+# Update MySQL container
+docker stop dashboard-mysql
+docker rm dashboard-mysql
+./scripts/deployment/setup-standalone-mysql.sh production
 ```
 
-## Security Considerations
+## 📊 Monitoring
 
-### Deployment Security
+### Health Checks
 
-- Use specific image tags, not `latest`
-- Scan images for vulnerabilities
-- Use non-root users in containers
-- Implement network segmentation
-- Regular security updates
+```bash
+# Application health endpoint
+curl -f https://dashboard.patricklehmann.dev/api/health
 
-### Secrets Management
+# Database health
+docker exec dashboard-mysql mysqladmin ping -u dashboard -p
 
-- Never commit secrets to version control
-- Use Vault for all sensitive data
-- Rotate secrets regularly
-- Implement least privilege access
-- Monitor secret access
+# Service health
+docker service ls --filter "name=dashboard"
+```
 
-### Network Security
+### Metrics Collection
 
-- Use encrypted communication (TLS)
-- Implement proper firewall rules
-- Use Docker secrets for sensitive data
-- Regular security audits
+Consider implementing:
+- **Prometheus**: Metrics collection
+- **Grafana**: Metrics visualization
+- **Loki**: Log aggregation
+- **Alertmanager**: Alert notifications
 
-## Additional Resources
+## 🔄 Rollback Procedures
 
-- [Development Guide](DEVELOPMENT.md)
-- [Vault Setup Guide](vault-setup.md)
+### Application Rollback
+```bash
+# Rollback to previous image version
+docker service update --image harbor.patricklehmann.dev/dashboard/backend:previous-tag dashboard_dashboard-backend
+
+# Or redeploy from previous Git commit
+git checkout <previous-commit>
+git push origin main --force
+```
+
+### Database Rollback
+```bash
+# Restore from backup
+docker exec -i dashboard-mysql mysql -u root -p dashboard < backup-YYYYMMDD.sql
+
+# Rollback migrations (if needed)
+docker exec <backend-container> php bin/console doctrine:migrations:migrate prev
+```
+
+## 📚 Additional Resources
+
+- [MySQL External Setup Guide](MYSQL_EXTERNAL_SETUP.md)
 - [Docker Swarm Documentation](https://docs.docker.com/engine/swarm/)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions) 
+- [HashiCorp Vault Documentation](https://www.vaultproject.io/docs)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Nginx Configuration Guide](https://nginx.org/en/docs/) 

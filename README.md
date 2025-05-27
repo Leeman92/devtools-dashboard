@@ -17,9 +17,10 @@ A full-stack web application for monitoring Docker containers and CI jobs with H
 ### Backend
 - Symfony 7.2
 - PHP 8.4+ with FrankenPHP
-- MySQL 8.0
+- MariaDB 10.11 (external standalone container)
 - Docker API integration via cURL with Unix socket support
 - HashiCorp Vault for secrets management
+- Doctrine ORM with migrations
 
 ### Frontend
 - React 18 with TypeScript
@@ -31,16 +32,18 @@ A full-stack web application for monitoring Docker containers and CI jobs with H
 
 ### Infrastructure
 - Docker & Docker Compose
-- Docker Swarm for production
-- GitHub Actions for CI/CD
+- Docker Swarm for production deployment
+- External MySQL container with Docker volumes
+- GitHub Actions for automated CI/CD
 - HashiCorp Vault for secrets management
-- Nginx for reverse proxy
+- Nginx for SSL termination and reverse proxy
 
 ## Prerequisites
 
 - Docker and Docker Compose
 - Git
 - HashiCorp Vault (for production)
+- Access to Docker Swarm cluster (for production)
 
 **Note**: No local PHP, Node.js, or npm installation required! All development operations use Docker containers.
 
@@ -148,6 +151,7 @@ devtools-dashboard/
 
 - [Development Guide](docs/DEVELOPMENT.md) - Comprehensive development workflow and standards
 - [Deployment Guide](docs/DEPLOYMENT.md) - Multi-environment deployment procedures
+- [MySQL External Setup Guide](docs/MYSQL_EXTERNAL_SETUP.md) - External MySQL container setup with Vault integration
 - [Docker Socket Access Guide](DOCKER_SOCKET_ACCESS.md) - Docker integration configuration and troubleshooting
 - [Vault Setup Guide](docs/vault-setup.md) - HashiCorp Vault configuration
 - [Vault Secrets Template](docs/vault-secrets-template.md) - Secrets management template
@@ -180,15 +184,41 @@ make test
 
 ### Development
 ```bash
+# Start full development environment
+./scripts/dev.sh
+
+# Or use Docker Compose directly
 docker compose up -d
 ```
 
 ### Production (Docker Swarm)
+
+#### 1. Set up External MySQL
 ```bash
-docker stack deploy -c docker-stack.yml devtools-dashboard
+# Set up standalone MySQL container with Vault integration
+./scripts/deployment/setup-standalone-mysql.sh production
 ```
 
-See the [deployment documentation](docs/vault-setup.md) for detailed production setup instructions.
+#### 2. Deploy Application
+```bash
+# Automatic deployment via GitHub Actions (recommended)
+git push origin main
+
+# Or manual deployment
+./scripts/deployment/generate-env-file.sh
+docker stack deploy -c docker-stack.yml dashboard
+```
+
+#### 3. Initialize Database
+```bash
+# Run migrations
+docker exec <backend-container> php bin/console doctrine:migrations:migrate --no-interaction
+
+# Create initial user
+docker exec -it <backend-container> php bin/console app:create-user
+```
+
+See the [MySQL External Setup Guide](docs/MYSQL_EXTERNAL_SETUP.md) and [deployment documentation](docs/vault-setup.md) for detailed production setup instructions.
 
 ## Contributing
 

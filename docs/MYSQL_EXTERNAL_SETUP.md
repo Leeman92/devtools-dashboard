@@ -125,6 +125,26 @@ docker service ls
 docker service logs dashboard_dashboard-backend
 ```
 
+### Step 7: Initialize Database Schema
+
+After deployment, you need to create the database schema and initial user:
+
+```bash
+# Find the backend container name
+docker ps | grep backend
+
+# Run Doctrine migrations to create tables
+docker exec <backend-container-name> php bin/console doctrine:migrations:migrate --no-interaction
+
+# Create initial admin user
+docker exec -it <backend-container-name> php bin/console app:create-user
+
+# Verify tables were created
+docker exec dashboard-mysql mysql -u dashboard -p -e "USE dashboard; SHOW TABLES;"
+```
+
+**Important**: The MySQL setup script only creates an empty database. The application schema (tables, indexes, etc.) is created by Symfony Doctrine migrations.
+
 ## 🔧 Configuration Details
 
 ### MySQL Container Configuration
