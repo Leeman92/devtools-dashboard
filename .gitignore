@@ -31,7 +31,6 @@ Thumbs.db
 /public/css
 /public/js
 /public/mix-manifest.json
-package-lock.json
 yarn.lock
 # Note: composer.lock should be committed for reproducible builds
 
