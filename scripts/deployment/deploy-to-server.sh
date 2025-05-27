@@ -56,30 +56,44 @@ echo "✅ Updated stack configuration to use new config"
 echo "🧹 Cleaning up old images..."
 docker image prune -f --filter "until=24h"
 
-# Pull latest image
-echo "📥 Pulling latest image..."
-docker pull harbor.patricklehmann.dev/dashboard/dashboard:latest
+# Pull latest images
+echo "📥 Pulling latest images..."
+docker pull harbor.patricklehmann.dev/dashboard/backend:latest
+docker pull harbor.patricklehmann.dev/dashboard/frontend:latest
 
 # Deploy stack
 echo "🚀 Deploying stack..."
 cd /home/patrick/dashboard
 docker stack deploy -c docker-stack-updated.yml dashboard
 
+# Force service updates to use new images
+echo "🔄 Forcing service updates to pull new images..."
+docker service update --image harbor.patricklehmann.dev/dashboard/backend:latest dashboard_dashboard-backend --force
+docker service update --image harbor.patricklehmann.dev/dashboard/frontend:latest dashboard_dashboard-frontend --force
+
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
 timeout=120
 while [ $timeout -gt 0 ]; do
-    if docker service ls | grep dashboard_dashboard | grep -q "2/2"; then
-        echo "✅ All replicas are running!"
+    backend_ready=$(docker service ls | grep dashboard_dashboard-backend | grep -c "2/2" || echo "0")
+    frontend_ready=$(docker service ls | grep dashboard_dashboard-frontend | grep -c "2/2" || echo "0")
+    
+    if [ "$backend_ready" = "1" ] && [ "$frontend_ready" = "1" ]; then
+        echo "✅ All services are running!"
         break
     fi
-    sleep 2
-    timeout=$((timeout-2))
+    
+    echo "   Backend: $backend_ready/1 ready, Frontend: $frontend_ready/1 ready"
+    sleep 5
+    timeout=$((timeout-5))
 done
 
 if [ $timeout -eq 0 ]; then
     echo "❌ Service deployment failed!"
-    docker service logs dashboard_dashboard
+    echo "Backend logs:"
+    docker service logs dashboard_dashboard-backend --tail 20
+    echo "Frontend logs:"
+    docker service logs dashboard_dashboard-frontend --tail 20
     exit 1
 fi
 
@@ -87,9 +101,16 @@ fi
 echo "🔍 Verifying deployment..."
 sleep 10
 
-if ! docker service ls | grep dashboard_dashboard | grep -q "2/2"; then
+backend_ready=$(docker service ls | grep dashboard_dashboard-backend | grep -c "2/2" || echo "0")
+frontend_ready=$(docker service ls | grep dashboard_dashboard-frontend | grep -c "2/2" || echo "0")
+
+if [ "$backend_ready" != "1" ] || [ "$frontend_ready" != "1" ]; then
     echo "❌ Service health check failed!"
-    docker service logs dashboard_dashboard
+    echo "Backend ready: $backend_ready, Frontend ready: $frontend_ready"
+    echo "Backend logs:"
+    docker service logs dashboard_dashboard-backend --tail 20
+    echo "Frontend logs:"
+    docker service logs dashboard_dashboard-frontend --tail 20
     exit 1
 fi
 
