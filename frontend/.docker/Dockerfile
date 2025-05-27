@@ -23,21 +23,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configurations
 COPY .docker/nginx-simple.conf /etc/nginx/conf.d/default.conf
-COPY .docker/nginx-main.conf /etc/nginx/nginx.conf
+# Use default nginx.conf (don't override main config)
 
-# Create nginx user and set permissions
-RUN addgroup -g 1000 frontend && \
-    adduser -D -u 1000 -G frontend frontend && \
-    chown -R frontend:frontend /usr/share/nginx/html && \
-    chown -R frontend:frontend /var/cache/nginx && \
-    chown -R frontend:frontend /var/log/nginx && \
-    chown -R frontend:frontend /etc/nginx/conf.d && \
-    chown -R frontend:frontend /var/run && \
-    mkdir -p /tmp/nginx && \
-    chown -R frontend:frontend /tmp/nginx
-
-# Switch to non-root user
-USER frontend
+# Just copy the files and use default nginx setup
+# No custom user setup - use default nginx behavior
 
 # Expose port 80
 EXPOSE 80
