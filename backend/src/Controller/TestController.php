@@ -10,6 +10,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -83,6 +84,8 @@ final class TestController extends AbstractController
     {
         $this->logger->info('Environment test requested');
         
+        $jwtSecret = $_ENV['JWT_SECRET_KEY'] ?? '';
+        
         return $this->json([
             'environment' => $this->getParameter('kernel.environment'),
             'debug' => $this->getParameter('kernel.debug'),
@@ -90,6 +93,10 @@ final class TestController extends AbstractController
             'app_env' => $_ENV['APP_ENV'] ?? 'not set',
             'app_debug' => $_ENV['APP_DEBUG'] ?? 'not set',
             'jwt_secret_key' => isset($_ENV['JWT_SECRET_KEY']) ? 'set' : 'not set',
+            'jwt_secret_key_length' => strlen($jwtSecret),
+            'jwt_secret_key_starts_with' => substr($jwtSecret, 0, 20) . '...',
+            'jwt_secret_key_is_file_path' => str_contains($jwtSecret, '/') || str_contains($jwtSecret, '.pem'),
+            'jwt_secret_key_is_rsa_key' => str_contains($jwtSecret, '-----BEGIN'),
             'jwt_public_key' => isset($_ENV['JWT_PUBLIC_KEY']) ? 'set' : 'not set',
             'timestamp' => new \DateTimeImmutable(),
         ]);
@@ -165,6 +172,67 @@ final class TestController extends AbstractController
             return $this->json([
                 'message' => 'Database test failed',
                 'database_connected' => false,
+                'error' => $e->getMessage(),
+                'timestamp' => new \DateTimeImmutable(),
+            ], 500);
+        }
+    }
+
+    #[Route('/login-debug', name: 'api_test_login_debug', methods: ['POST'])]
+    public function testLoginDebug(Request $request): JsonResponse
+    {
+        try {
+            $this->logger->info('Login debug test started');
+            
+            $data = json_decode($request->getContent(), true);
+            
+            if (!$data || !isset($data['email'])) {
+                return $this->json(['error' => 'Email required for debug test'], 400);
+            }
+            
+            $this->logger->info('Looking up user for debug test', ['email' => $data['email']]);
+            
+            // Find user
+            $user = $this->entityManager->getRepository(User::class)
+                ->findOneBy(['email' => $data['email']]);
+            
+            if (!$user) {
+                $this->logger->warning('User not found in debug test', ['email' => $data['email']]);
+                return $this->json(['error' => 'User not found'], 404);
+            }
+            
+            $this->logger->info('User found in debug test', [
+                'user_id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'roles' => $user->getRoles(),
+            ]);
+            
+            // Test JWT token generation
+            $token = $this->jwtManager->create($user);
+            
+            $this->logger->info('JWT token generated successfully in debug test');
+            
+            return $this->json([
+                'message' => 'Login debug test completed',
+                'user_found' => true,
+                'user_id' => $user->getId(),
+                'user_email' => $user->getEmail(),
+                'user_roles' => $user->getRoles(),
+                'jwt_token_generated' => !empty($token),
+                'token_length' => strlen($token),
+                'timestamp' => new \DateTimeImmutable(),
+            ]);
+            
+        } catch (\Exception $e) {
+            $this->logger->error('Login debug test failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return $this->json([
+                'message' => 'Login debug test failed',
                 'error' => $e->getMessage(),
                 'timestamp' => new \DateTimeImmutable(),
             ], 500);
