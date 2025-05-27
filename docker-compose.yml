@@ -11,11 +11,10 @@ services:
       - ./backend:/app
       # Mount Docker socket for container monitoring
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # expose port 80 in the container on 8080 of the host
+    # Development only: expose port for frontend proxy access
+    # In production, backend has no exposed ports (internal network only)
     ports:
       - "80:80"
-      - "443:443"
-      - "443:443/udp"
     # optional: set your app environment
     environment:
       APP_ENV: dev

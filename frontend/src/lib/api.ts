@@ -1,9 +1,3 @@
-interface ApiResponse<T = any> {
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
 class ApiClient {
   private baseUrl: string;
 

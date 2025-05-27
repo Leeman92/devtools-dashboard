@@ -1,19 +1,72 @@
 version: '3.8'
 
 services:
-  dashboard:
-    image: harbor.patricklehmann.dev/dashboard/dashboard:latest
+  # Frontend service (public-facing)
+  dashboard-frontend:
+    image: harbor.patricklehmann.dev/dashboard/frontend:latest
+    build:
+      context: frontend
+      dockerfile: .docker/Dockerfile
+      target: production
+    ports:
+      - target: 80
+        published: 3001
+        protocol: tcp
+        mode: ingress
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+        failure_action: pause
+        monitor: 30s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    networks:
+      - dashboard-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.docker.stack.description=Dashboard Frontend (React + Nginx)"
+      - "com.docker.stack.namespace=dashboard"
+      - "com.docker.stack.maintainer=Patrick Lehmann"
+      - "com.docker.stack.version=1.0.0"
+    depends_on:
+      - dashboard-backend
+
+  # Backend service (internal only)
+  dashboard-backend:
+    image: harbor.patricklehmann.dev/dashboard/backend:latest
     build:
       context: backend
       dockerfile: .docker/Dockerfile
       target: production
       args:
         DOCKER_GID: 986
-    ports:
-      - target: 80
-        published: 3001
-        protocol: tcp
-        mode: ingress
+    # No external ports - only accessible via internal network
     configs:
       - source: dashboard_env
         target: /app/.env
@@ -61,76 +114,25 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
-      - "com.docker.stack.description=Patrick Lehmann's Development Dashboard"
+      - "com.docker.stack.description=Dashboard Backend API (Symfony + PHP)"
       - "com.docker.stack.namespace=dashboard"
       - "com.docker.stack.maintainer=Patrick Lehmann"
       - "com.docker.stack.version=1.0.0"
-    depends_on:
-      - database
-
-  database:
-    image: mariadb:10.11
-    environment:
-      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
-      MYSQL_DATABASE: dashboard
-      MYSQL_USER: dashboard
-      MYSQL_PASSWORD_FILE: /run/secrets/db_password
-    volumes:
-      - database_data:/var/lib/mysql
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
-    networks:
-      - dashboard-network
-    secrets:
-      - db_root_password
-      - db_password
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      - "com.docker.stack.description=Dashboard Database"
-      - "com.docker.stack.namespace=dashboard"
-
-volumes:
-  database_data:
-    driver: local
-    labels:
-      - "com.docker.stack.description=Dashboard Database Data"
-      - "com.docker.stack.namespace=dashboard"
+  # Note: MySQL database is external (standalone container)
+  # Container name: dashboard-mysql
+  # Network: dashboard-network
+  # Connection: mysql://dashboard:password@dashboard-mysql:3306/dashboard
 
 networks:
   dashboard-network:
-    driver: overlay
-    attachable: true
-    driver_opts:
-      encrypted: "true"
+    # Use existing external network created by MySQL setup script
+    external: true
     labels:
-      - "com.docker.stack.description=Dashboard Network"
+      - "com.docker.stack.description=Dashboard Network (External)"
       - "com.docker.stack.namespace=dashboard"
 
-secrets:
-  db_root_password:
-    external: true
-  db_password:
-    external: true
+# Note: No database secrets needed since using external MySQL container
+# The DATABASE_URL in the environment config should point to: dashboard-mysql:3306
 
 configs:
   dashboard_env:

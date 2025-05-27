@@ -16,7 +16,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      image: harbor.patricklehmann.dev/dashboard/dashboard:latest
+      backend-image: harbor.patricklehmann.dev/dashboard/backend:latest
+      frontend-image: harbor.patricklehmann.dev/dashboard/frontend:latest
 
     steps:
       - name: Checkout repo
@@ -60,16 +61,27 @@ jobs:
           username: ${{ env.HARBOR_USERNAME }}
           password: ${{ env.HARBOR_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and push Backend Docker image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/.docker/Dockerfile
           target: production
           push: true
-          tags: harbor.patricklehmann.dev/dashboard/dashboard:latest
+          tags: harbor.patricklehmann.dev/dashboard/backend:latest
           build-args: |
             DOCKER_GID=986
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Build and push Frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/.docker/Dockerfile
+          target: production
+          push: true
+          tags: harbor.patricklehmann.dev/dashboard/frontend:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
