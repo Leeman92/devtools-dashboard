@@ -189,7 +189,7 @@ function Dashboard() {
                 {/* Docker Containers */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Docker Containers</CardTitle>
+                    <CardTitle>Recent Containers (4 Newest)</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {loading ? (
@@ -203,7 +203,10 @@ function Dashboard() {
                           <div>Image</div>
                           <div>Status</div>
                         </div>
-                        {containers.map((container) => (
+                        {containers
+                          .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
+                          .slice(0, 4)
+                          .map((container) => (
                           <div key={container.id} className="grid grid-cols-3 gap-4 items-center py-2">
                             <div className="font-medium text-gray-900">
                               {container.name.replace(/^\//, '')}
