@@ -20,6 +20,18 @@ security:
             stateless: true
             security: false
         
+        # Public test endpoints for debugging
+        test:
+            pattern: ^/api/test
+            stateless: true
+            security: false
+        
+        # Public health endpoint
+        health:
+            pattern: ^/health
+            stateless: true
+            security: false
+        
         # Protected API endpoints
         api:
             pattern: ^/api
@@ -35,6 +47,8 @@ security:
     # Note: Only the *first* access control that matches will be used
     access_control:
         - { path: ^/api/auth/(login|register), roles: PUBLIC_ACCESS }
+        - { path: ^/api/test, roles: PUBLIC_ACCESS }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth, roles: ROLE_USER }
         - { path: ^/api, roles: ROLE_USER }
 
