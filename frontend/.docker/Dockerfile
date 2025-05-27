@@ -1,16 +1,13 @@
 # Multi-stage build for React frontend
-FROM node:20-alpine AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better layer caching
 COPY package.json package-lock.json ./
 
-# Debug: List files to ensure package-lock.json is present
-RUN ls -la && echo "Node version:" && node --version && echo "NPM version:" && npm --version
-
-# Install dependencies (including dev dependencies for build)
-RUN npm ci --verbose
+# Install dependencies with proper handling for Alpine Linux
+RUN npm ci --include=optional
 
 # Copy source code
 COPY . .
