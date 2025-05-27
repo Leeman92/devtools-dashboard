@@ -158,6 +158,13 @@ jobs:
         env:
           VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
 
+      - name: Create deployment info file
+        run: |
+          echo "BACKEND_CHANGED=${{ needs.build.outputs.backend-changed }}" > deployment-info.env
+          echo "FRONTEND_CHANGED=${{ needs.build.outputs.frontend-changed }}" >> deployment-info.env
+          echo "Deployment info:"
+          cat deployment-info.env
+
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -165,7 +172,7 @@ jobs:
           username: patrick
           port: ${{ env.SERVER_PORT }}
           key: ${{ env.SSH_PRIVATE_KEY }}
-          source: "docker-stack.yml,.env.production,scripts/deployment/deploy-to-server.sh"
+          source: "docker-stack.yml,.env.production,scripts/deployment/deploy-to-server.sh,deployment-info.env"
           target: "/home/patrick/dashboard"
           strip_components: 0
 
