@@ -22,7 +22,7 @@ FROM nginx:alpine AS production
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configurations
-COPY .docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY .docker/nginx-simple.conf /etc/nginx/conf.d/default.conf
 COPY .docker/nginx-main.conf /etc/nginx/nginx.conf
 
 # Create nginx user and set permissions
