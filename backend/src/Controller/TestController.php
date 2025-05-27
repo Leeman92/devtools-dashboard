@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,6 +19,7 @@ final class TestController extends AbstractController
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly JWTTokenManagerInterface $jwtManager,
     ) {}
 
     #[Route('/logging', name: 'api_test_logging', methods: ['GET'])]
@@ -95,13 +97,14 @@ final class TestController extends AbstractController
     {
         try {
             // Test JWT configuration by checking if the service is available
-            $jwtManager = $this->container->get('lexik_jwt_authentication.jwt_manager');
-            
-            $this->logger->info('JWT manager service is available');
+            $this->logger->info('JWT manager service is available', [
+                'jwt_manager_class' => get_class($this->jwtManager),
+            ]);
             
             return $this->json([
                 'message' => 'JWT configuration test completed',
                 'jwt_manager_available' => true,
+                'jwt_manager_class' => get_class($this->jwtManager),
                 'timestamp' => new \DateTimeImmutable(),
             ]);
         } catch (\Exception $e) {
