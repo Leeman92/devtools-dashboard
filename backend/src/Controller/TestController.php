@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,6 +22,7 @@ final class TestController extends AbstractController
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly JWTTokenManagerInterface $jwtManager,
+        private readonly EntityManagerInterface $entityManager,
     ) {}
 
     #[Route('/logging', name: 'api_test_logging', methods: ['GET'])]
@@ -117,6 +120,51 @@ final class TestController extends AbstractController
             return $this->json([
                 'message' => 'JWT configuration test failed',
                 'jwt_manager_available' => false,
+                'error' => $e->getMessage(),
+                'timestamp' => new \DateTimeImmutable(),
+            ], 500);
+        }
+    }
+
+    #[Route('/database', name: 'api_test_database', methods: ['GET'])]
+    public function testDatabase(): JsonResponse
+    {
+        try {
+            // Test database connection
+            $this->logger->info('Testing database connection');
+            
+            // Try to get database connection
+            $connection = $this->entityManager->getConnection();
+            $connection->connect();
+            
+            $this->logger->info('Database connection successful');
+            
+            // Try to count users
+            $userCount = $this->entityManager->getRepository(User::class)->count([]);
+            
+            $this->logger->info('User count retrieved', ['count' => $userCount]);
+            
+            // Test if user table exists by trying to find a user
+            $testUser = $this->entityManager->getRepository(User::class)->findOneBy([]);
+            
+            return $this->json([
+                'message' => 'Database test completed',
+                'database_connected' => true,
+                'user_count' => $userCount,
+                'has_test_user' => $testUser !== null,
+                'test_user_email' => $testUser?->getEmail(),
+                'timestamp' => new \DateTimeImmutable(),
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Database test failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            return $this->json([
+                'message' => 'Database test failed',
+                'database_connected' => false,
                 'error' => $e->getMessage(),
                 'timestamp' => new \DateTimeImmutable(),
             ], 500);
