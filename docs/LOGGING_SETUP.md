@@ -139,15 +139,26 @@ For production environments, consider setting up log aggregation:
 
 ## Testing Logging
 
-### Test Endpoint
+### Test Endpoints
 
-Use the logging test endpoint to verify logging is working:
+Use the dedicated test endpoints to verify logging is working:
 
 ```bash
-curl -X GET https://dashboard.patricklehmann.dev/api/test-logging
-```
+# Test all log levels
+curl -X GET https://dashboard.patricklehmann.dev/api/test/logging
 
-This endpoint generates log messages at all levels for testing purposes.
+# Test environment configuration
+curl -X GET https://dashboard.patricklehmann.dev/api/test/env
+
+# Test error handling and logging
+curl -X GET https://dashboard.patricklehmann.dev/api/test/error
+
+# Test 500 error logging
+curl -X GET https://dashboard.patricklehmann.dev/api/test/500
+
+# Test authentication logging
+curl -X POST https://dashboard.patricklehmann.dev/api/test/auth-test
+```
 
 ### Health Check Logging
 
@@ -155,6 +166,14 @@ The health check endpoint also generates log entries:
 
 ```bash
 curl -X GET https://dashboard.patricklehmann.dev/health
+```
+
+### Local Testing
+
+Use the provided test script to verify logging locally:
+
+```bash
+./scripts/test-logging.sh
 ```
 
 ## Troubleshooting
@@ -165,6 +184,9 @@ curl -X GET https://dashboard.patricklehmann.dev/health
 2. **Verify Configuration**: Check `config/packages/monolog.yaml`
 3. **Container Status**: Ensure containers are running properly
 4. **Docker Logs**: Check if Docker is capturing stderr output
+5. **Test Endpoints**: Use `/api/test/logging` to verify basic logging works
+6. **Exception Listener**: Verify the ExceptionListener is properly configured
+7. **Environment Variables**: Check that all logging environment variables are set
 
 ### Log Level Not Working
 

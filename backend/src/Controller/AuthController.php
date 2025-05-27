@@ -105,61 +105,120 @@ class AuthController extends AbstractController
     #[Route('/login', name: 'api_auth_login', methods: ['POST'])]
     public function login(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $this->logger->info('Login attempt started', [
+            'ip' => $request->getClientIp(),
+            'user_agent' => $request->headers->get('User-Agent'),
+        ]);
 
-        if (!$data || !isset($data['email'], $data['password'])) {
-            return new JsonResponse([
-                'error' => 'Missing required fields: email, password'
-            ], Response::HTTP_BAD_REQUEST);
-        }
+        try {
+            $data = json_decode($request->getContent(), true);
 
-        // Find user
-        $user = $this->entityManager->getRepository(User::class)
-            ->findOneBy(['email' => $data['email']]);
+            if (!$data || !isset($data['email'], $data['password'])) {
+                $this->logger->warning('Login attempt with missing fields', [
+                    'has_data' => !empty($data),
+                    'has_email' => isset($data['email']),
+                    'has_password' => isset($data['password']),
+                    'ip' => $request->getClientIp(),
+                ]);
+                
+                return new JsonResponse([
+                    'error' => 'Missing required fields: email, password'
+                ], Response::HTTP_BAD_REQUEST);
+            }
 
-        if (!$user) {
-            $this->logger->warning('Login attempt with non-existent email', [
+            $this->logger->info('Login data parsed successfully', [
                 'email' => $data['email'],
+                'ip' => $request->getClientIp(),
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to parse login request data', [
+                'error' => $e->getMessage(),
+                'content' => $request->getContent(),
                 'ip' => $request->getClientIp(),
             ]);
             
             return new JsonResponse([
-                'error' => 'Invalid credentials'
-            ], Response::HTTP_UNAUTHORIZED);
+                'error' => 'Invalid request data'
+            ], Response::HTTP_BAD_REQUEST);
         }
 
-        // Verify password
-        if (!$this->passwordHasher->isPasswordValid($user, $data['password'])) {
-            $this->logger->warning('Login attempt with invalid password', [
+        try {
+            // Find user
+            $this->logger->info('Looking up user by email', [
+                'email' => $data['email'],
+            ]);
+            
+            $user = $this->entityManager->getRepository(User::class)
+                ->findOneBy(['email' => $data['email']]);
+
+            if (!$user) {
+                $this->logger->warning('Login attempt with non-existent email', [
+                    'email' => $data['email'],
+                    'ip' => $request->getClientIp(),
+                ]);
+                
+                return new JsonResponse([
+                    'error' => 'Invalid credentials'
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+
+            $this->logger->info('User found, verifying password', [
+                'user_id' => $user->getId(),
+                'email' => $user->getEmail(),
+            ]);
+
+            // Verify password
+            if (!$this->passwordHasher->isPasswordValid($user, $data['password'])) {
+                $this->logger->warning('Login attempt with invalid password', [
+                    'user_id' => $user->getId(),
+                    'email' => $user->getEmail(),
+                    'ip' => $request->getClientIp(),
+                ]);
+                
+                return new JsonResponse([
+                    'error' => 'Invalid credentials'
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+
+            $this->logger->info('Password verified, generating JWT token', [
+                'user_id' => $user->getId(),
+                'email' => $user->getEmail(),
+            ]);
+
+            // Generate JWT token
+            $token = $this->jwtManager->create($user);
+
+            $this->logger->info('User logged in successfully', [
                 'user_id' => $user->getId(),
                 'email' => $user->getEmail(),
                 'ip' => $request->getClientIp(),
             ]);
+
+            return new JsonResponse([
+                'message' => 'Login successful',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->getId(),
+                    'email' => $user->getEmail(),
+                    'name' => $user->getName(),
+                    'roles' => $user->getRoles(),
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            $this->logger->error('Login process failed with exception', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'email' => $data['email'] ?? 'unknown',
+                'ip' => $request->getClientIp(),
+            ]);
             
             return new JsonResponse([
-                'error' => 'Invalid credentials'
-            ], Response::HTTP_UNAUTHORIZED);
+                'error' => 'Login failed due to server error'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        // Generate JWT token
-        $token = $this->jwtManager->create($user);
-
-        $this->logger->info('User logged in successfully', [
-            'user_id' => $user->getId(),
-            'email' => $user->getEmail(),
-            'ip' => $request->getClientIp(),
-        ]);
-
-        return new JsonResponse([
-            'message' => 'Login successful',
-            'token' => $token,
-            'user' => [
-                'id' => $user->getId(),
-                'email' => $user->getEmail(),
-                'name' => $user->getName(),
-                'roles' => $user->getRoles(),
-            ]
-        ]);
     }
 
     #[Route('/me', name: 'api_auth_me', methods: ['GET'])]

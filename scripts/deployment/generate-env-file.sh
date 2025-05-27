@@ -121,7 +121,7 @@ cat > .env.production << EOF
 
 # Symfony Environment
 APP_ENV=production
-APP_DEBUG=false
+APP_DEBUG=true
 EOF
 
 # Add each secret with proper handling for multiline values
@@ -194,6 +194,9 @@ LOG_LEVEL=info
 LOG_LEVEL_DEFAULT=info
 LOG_CHANNEL=stderr
 MONOLOG_JSON_FORMAT=true
+
+# Force error logging to always be enabled
+APP_LOG_LEVEL=error
 EOF
 
 echo ""

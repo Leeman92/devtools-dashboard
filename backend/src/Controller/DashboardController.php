@@ -72,21 +72,7 @@ final class DashboardController extends AbstractController
         ]);
     }
 
-    #[Route('/api/test-logging', name: 'api_test_logging', methods: ['GET'])]
-    public function testLogging(): JsonResponse
-    {
-        $this->logger->debug('Debug level log message');
-        $this->logger->info('Info level log message', ['test' => true]);
-        $this->logger->notice('Notice level log message');
-        $this->logger->warning('Warning level log message', ['warning' => 'test']);
-        $this->logger->error('Error level log message', ['error' => 'test']);
 
-        return $this->json([
-            'message' => 'Logging test completed',
-            'levels_tested' => ['debug', 'info', 'notice', 'warning', 'error'],
-            'timestamp' => new \DateTimeImmutable(),
-        ]);
-    }
 
     #[Route('/api/docker/services', name: 'api_docker_services', methods: ['GET'])]
     public function dockerServices(): JsonResponse

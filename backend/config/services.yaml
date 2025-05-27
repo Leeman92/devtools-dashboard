@@ -47,6 +47,12 @@ services:
         arguments:
             $logger: '@monolog.logger.metrics'
 
+    # Exception listener for comprehensive error logging
+    App\EventListener\ExceptionListener:
+        arguments:
+            $logger: '@logger'
+            $environment: '%kernel.environment%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
