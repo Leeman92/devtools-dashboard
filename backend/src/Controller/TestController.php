@@ -84,7 +84,39 @@ final class TestController extends AbstractController
             'log_level' => $_ENV['LOG_LEVEL'] ?? 'not set',
             'app_env' => $_ENV['APP_ENV'] ?? 'not set',
             'app_debug' => $_ENV['APP_DEBUG'] ?? 'not set',
+            'jwt_secret_key' => isset($_ENV['JWT_SECRET_KEY']) ? 'set' : 'not set',
+            'jwt_public_key' => isset($_ENV['JWT_PUBLIC_KEY']) ? 'set' : 'not set',
             'timestamp' => new \DateTimeImmutable(),
         ]);
+    }
+
+    #[Route('/jwt-test', name: 'api_test_jwt', methods: ['GET'])]
+    public function testJWT(): JsonResponse
+    {
+        try {
+            // Test JWT configuration by checking if the service is available
+            $jwtManager = $this->container->get('lexik_jwt_authentication.jwt_manager');
+            
+            $this->logger->info('JWT manager service is available');
+            
+            return $this->json([
+                'message' => 'JWT configuration test completed',
+                'jwt_manager_available' => true,
+                'timestamp' => new \DateTimeImmutable(),
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('JWT configuration test failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            return $this->json([
+                'message' => 'JWT configuration test failed',
+                'jwt_manager_available' => false,
+                'error' => $e->getMessage(),
+                'timestamp' => new \DateTimeImmutable(),
+            ], 500);
+        }
     }
 } 

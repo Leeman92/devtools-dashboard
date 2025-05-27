@@ -158,6 +158,9 @@ curl -X GET https://dashboard.patricklehmann.dev/api/test/500
 
 # Test authentication logging
 curl -X POST https://dashboard.patricklehmann.dev/api/test/auth-test
+
+# Test JWT configuration
+curl -X GET https://dashboard.patricklehmann.dev/api/test/jwt-test
 ```
 
 ### Health Check Logging
@@ -199,6 +202,15 @@ Use the provided test script to verify logging locally:
 1. **Service Configuration**: Check `config/services.yaml` for logger injection
 2. **Channel Registration**: Verify channels are registered in `monolog.yaml`
 3. **Handler Configuration**: Ensure handlers are configured for specific channels
+
+### JWT Authentication Errors
+
+If you see "Environment variable not found: JWT_PUBLIC_KEY" errors:
+
+1. **Check JWT Configuration**: The application uses HMAC (HS256) algorithm with secret key only
+2. **Verify Secret Key**: Ensure `JWT_SECRET_KEY` is set in environment variables
+3. **Test JWT Service**: Use `/api/test/jwt-test` endpoint to verify JWT manager is working
+4. **Check Environment**: Use `/api/test/env` to see which JWT variables are set
 
 ## Security Considerations
 

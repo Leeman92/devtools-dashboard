@@ -39,8 +39,11 @@ curl -s http://localhost:8000/api/test/500 || echo "❌ 500 test failed (expecte
 echo "5. Testing auth logging..."
 curl -s -X POST http://localhost:8000/api/test/auth-test || echo "❌ Auth logging test failed"
 
+echo "6. Testing JWT configuration..."
+curl -s http://localhost:8000/api/test/jwt-test || echo "❌ JWT test failed"
+
 # Test actual login endpoint
-echo "6. Testing login endpoint with invalid data..."
+echo "7. Testing login endpoint with invalid data..."
 curl -s -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"wrongpassword"}' || echo "❌ Login test failed"
