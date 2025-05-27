@@ -133,9 +133,9 @@ final class TestController extends AbstractController
             // Test database connection
             $this->logger->info('Testing database connection');
             
-            // Try to get database connection
+            // Try to get database connection and test it
             $connection = $this->entityManager->getConnection();
-            $connection->connect();
+            $connection->executeQuery('SELECT 1');
             
             $this->logger->info('Database connection successful');
             
