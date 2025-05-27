@@ -85,6 +85,7 @@ fetch_vault_secret() {
 # Define all required secrets (uppercase as stored in Vault)
 REQUIRED_SECRETS=(
     "APP_SECRET"
+    "JWT_SECRET_KEY"
     "DATABASE_URL"
     "DOCKER_SOCKET_PATH"
     "GITHUB_TOKEN"
@@ -129,6 +130,9 @@ for secret in "${REQUIRED_SECRETS[@]}"; do
     case "$secret" in
         "APP_SECRET")
             echo "# Application Secrets from Vault" >> .env.production
+            ;;
+        "JWT_SECRET_KEY")
+            echo "# JWT Authentication" >> .env.production
             ;;
         "DATABASE_URL")
             echo "# Database Configuration" >> .env.production
