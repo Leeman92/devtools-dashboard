@@ -1,5 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Play, Square, RotateCcw, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 import type { DockerContainer } from '@/types/docker'
+import { api } from '@/lib/api'
 
 interface ContainersListProps {
   containers: DockerContainer[]
@@ -7,6 +11,7 @@ interface ContainersListProps {
   showAll?: boolean
   title?: string
   description?: string
+  onContainerAction?: () => void
 }
 
 const ContainersList = ({ 
@@ -14,8 +19,49 @@ const ContainersList = ({
   loading, 
   showAll = false,
   title = "Recent Containers (4 Newest)",
-  description
+  description,
+  onContainerAction
 }: ContainersListProps) => {
+  const [actionLoading, setActionLoading] = useState<{ [key: string]: string }>({})
+  const [actionSuccess, setActionSuccess] = useState<{ [key: string]: boolean }>({})
+
+  const handleContainerAction = async (containerId: string, action: 'start' | 'stop' | 'restart') => {
+    try {
+      setActionLoading(prev => ({ ...prev, [containerId]: action }))
+      
+      let result;
+      switch (action) {
+        case 'start':
+          result = await api.docker.start(containerId)
+          break
+        case 'stop':
+          result = await api.docker.stop(containerId)
+          break
+        case 'restart':
+          result = await api.docker.restart(containerId)
+          break
+      }
+
+      // Show success feedback
+      setActionSuccess(prev => ({ ...prev, [containerId]: true }))
+      setTimeout(() => {
+        setActionSuccess(prev => ({ ...prev, [containerId]: false }))
+      }, 2000)
+
+      // Trigger refresh of container list
+      if (onContainerAction) {
+        setTimeout(onContainerAction, 1000)
+      }
+
+    } catch (error) {
+      console.error(`Failed to ${action} container:`, error)
+      // Show error feedback (you could add error state here)
+      alert(`Failed to ${action} container: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setActionLoading(prev => ({ ...prev, [containerId]: '' }))
+    }
+  }
+
   const displayedContainers = showAll 
     ? containers 
     : containers
@@ -83,16 +129,72 @@ const ContainersList = ({
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${
-                    container.state === 'running'
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                  }`}>
-                    {container.state === 'running' ? 'Running' : 'Exited'}
+                <div className="flex items-center space-x-3">
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${
+                      container.state === 'running'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}>
+                      {container.state === 'running' ? 'Running' : 'Exited'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(container.created).toLocaleDateString()}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(container.created).toLocaleDateString()}
+                  
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2">
+                    {container.state !== 'running' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleContainerAction(container.id, 'start')}
+                        disabled={!!actionLoading[container.id]}
+                        className={`${actionSuccess[container.id] ? 'border-green-500 text-green-600' : ''} hover:bg-green-50 hover:border-green-300`}
+                        title="Start container"
+                      >
+                        {actionLoading[container.id] === 'start' ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                    
+                    {container.state === 'running' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleContainerAction(container.id, 'stop')}
+                          disabled={!!actionLoading[container.id]}
+                          className={`${actionSuccess[container.id] ? 'border-green-500 text-green-600' : ''} hover:bg-red-50 hover:border-red-300`}
+                          title="Stop container"
+                        >
+                          {actionLoading[container.id] === 'stop' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Square className="h-4 w-4" />
+                          )}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleContainerAction(container.id, 'restart')}
+                          disabled={!!actionLoading[container.id]}
+                          className={`${actionSuccess[container.id] ? 'border-green-500 text-green-600' : ''} hover:bg-blue-50 hover:border-blue-300`}
+                          title="Restart container"
+                        >
+                          {actionLoading[container.id] === 'restart' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

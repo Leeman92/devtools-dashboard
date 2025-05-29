@@ -126,6 +126,60 @@ final class DashboardController extends AbstractController
         ]);
     }
 
+    #[Route('/api/docker/containers/{containerId}/start', name: 'api_docker_container_start', methods: ['POST'])]
+    public function dockerContainerStart(string $containerId): JsonResponse
+    {
+        $this->logger->info('Container start requested', [
+            'container_id' => $containerId,
+        ]);
+
+        $result = $this->dockerService->startContainer($containerId);
+        
+        return $this->json([
+            'action' => 'start',
+            'container_id' => $containerId,
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'timestamp' => new \DateTimeImmutable(),
+        ], $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+    }
+
+    #[Route('/api/docker/containers/{containerId}/stop', name: 'api_docker_container_stop', methods: ['POST'])]
+    public function dockerContainerStop(string $containerId): JsonResponse
+    {
+        $this->logger->info('Container stop requested', [
+            'container_id' => $containerId,
+        ]);
+
+        $result = $this->dockerService->stopContainer($containerId);
+        
+        return $this->json([
+            'action' => 'stop',
+            'container_id' => $containerId,
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'timestamp' => new \DateTimeImmutable(),
+        ], $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+    }
+
+    #[Route('/api/docker/containers/{containerId}/restart', name: 'api_docker_container_restart', methods: ['POST'])]
+    public function dockerContainerRestart(string $containerId): JsonResponse
+    {
+        $this->logger->info('Container restart requested', [
+            'container_id' => $containerId,
+        ]);
+
+        $result = $this->dockerService->restartContainer($containerId);
+        
+        return $this->json([
+            'action' => 'restart',
+            'container_id' => $containerId,
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'timestamp' => new \DateTimeImmutable(),
+        ], $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+    }
+
     #[Route('/api/docker/services/{serviceName}/history', name: 'api_docker_service_history', methods: ['GET'])]
     public function dockerServiceHistory(string $serviceName, Request $request): JsonResponse
     {

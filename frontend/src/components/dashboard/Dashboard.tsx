@@ -35,6 +35,16 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
     return () => clearInterval(interval)
   }, [])
 
+  // Fetch containers function for manual refresh
+  const fetchContainers = async () => {
+    try {
+      const data = await api.docker.containers()
+      setContainers(data.containers || [])
+    } catch (error) {
+      console.error('Failed to fetch containers:', error)
+    }
+  }
+
   const runningContainers = containers.filter(c => c.state === 'running' || c.status.toLowerCase().includes('up'))
   const recentCommits = 12 // Mock data
 
@@ -54,6 +64,7 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
             containers={containers}
             loading={loading}
             showAll={false}
+            onContainerAction={fetchContainers}
           />
 
           {/* Container CPU Usage Chart */}
@@ -71,6 +82,7 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
         showAll={true}
         title="All Docker Containers"
         description="Complete list of Docker containers with detailed information"
+        onContainerAction={fetchContainers}
       />
     )
   }

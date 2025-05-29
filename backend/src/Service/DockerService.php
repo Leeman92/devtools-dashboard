@@ -103,6 +103,102 @@ final readonly class DockerService
     }
 
     /**
+     * Start a Docker container.
+     */
+    public function startContainer(string $containerId): array
+    {
+        try {
+            $result = $this->makeDockerApiRequestPost("/containers/{$containerId}/start");
+            
+            $this->logger->info('Container started successfully', [
+                'container_id' => $containerId,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Container started successfully',
+                'container_id' => $containerId,
+            ];
+
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to start container', [
+                'container_id' => $containerId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to start container: ' . $e->getMessage(),
+                'container_id' => $containerId,
+            ];
+        }
+    }
+
+    /**
+     * Stop a Docker container.
+     */
+    public function stopContainer(string $containerId): array
+    {
+        try {
+            $result = $this->makeDockerApiRequestPost("/containers/{$containerId}/stop");
+            
+            $this->logger->info('Container stopped successfully', [
+                'container_id' => $containerId,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Container stopped successfully',
+                'container_id' => $containerId,
+            ];
+
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to stop container', [
+                'container_id' => $containerId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to stop container: ' . $e->getMessage(),
+                'container_id' => $containerId,
+            ];
+        }
+    }
+
+    /**
+     * Restart a Docker container.
+     */
+    public function restartContainer(string $containerId): array
+    {
+        try {
+            $result = $this->makeDockerApiRequestPost("/containers/{$containerId}/restart");
+            
+            $this->logger->info('Container restarted successfully', [
+                'container_id' => $containerId,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Container restarted successfully',
+                'container_id' => $containerId,
+            ];
+
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to restart container', [
+                'container_id' => $containerId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to restart container: ' . $e->getMessage(),
+                'container_id' => $containerId,
+            ];
+        }
+    }
+
+    /**
      * Get service logs.
      */
     public function getServiceLogs(string $serviceId, int $lines = 100): array
@@ -355,5 +451,59 @@ final readonly class DockerService
         }
 
         return $response;
+    }
+
+    /**
+     * Make a Docker API request using cURL with Unix socket (POST method).
+     */
+    private function makeDockerApiRequestPost(string $endpoint): array
+    {
+        $ch = curl_init();
+        
+        curl_setopt_array($ch, [
+            CURLOPT_UNIX_SOCKET_PATH => $this->dockerSocketPath,
+            CURLOPT_URL => 'http://localhost' . $endpoint,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => '',
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Content-Length: 0',
+            ],
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false || !empty($error)) {
+            throw new \RuntimeException("cURL error: {$error}");
+        }
+
+        // Docker API returns 204 for successful start/stop/restart operations
+        if (!in_array($httpCode, [200, 204], true)) {
+            // Log the actual response body for debugging
+            $this->logger->error('Docker API error response', [
+                'endpoint' => $endpoint,
+                'http_code' => $httpCode,
+                'response_body' => $response,
+            ]);
+            
+            throw new \RuntimeException("HTTP error: {$httpCode} - Response: " . substr($response, 0, 200));
+        }
+
+        // Return empty array for 204 responses (successful operations with no content)
+        if ($httpCode === 204) {
+            return [];
+        }
+
+        $data = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \RuntimeException('Invalid JSON response: ' . json_last_error_msg());
+        }
+
+        return $data;
     }
 } 
