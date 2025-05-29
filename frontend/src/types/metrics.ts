@@ -11,10 +11,10 @@ export interface MetricData {
 
 export interface ChartDataPoint {
   timestamp: string
-  value: number
-  avgValue?: number
-  minValue?: number
-  maxValue?: number
+  value?: number
+  avg_value?: number
+  min_value?: number
+  max_value?: number
 }
 
 export interface MetricsResponse {

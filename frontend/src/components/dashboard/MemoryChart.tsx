@@ -42,32 +42,33 @@ const MemoryChart = () => {
         
         // Try to fetch real data from infrastructure metrics
         try {
-          const response: ChartResponse = await api.infrastructure.chartData('docker', 'memory_percent', 2)
+          const response: ChartResponse = await api.infrastructure.chartData('docker', 'memory_percent', 1)
+          console.log('Memory API Response:', response) // Debug log
           
           if (response.chart_data && response.chart_data.length > 0) {
             const formattedData: ChartData[] = response.chart_data.map(point => ({
-              ...point,
+              timestamp: point.timestamp,
+              value: point.avg_value || point.value || 0, // Use avg_value from API, fallback to value
               formattedTime: format(new Date(point.timestamp), 'HH:mm')
             }))
+            console.log('Formatted Memory data:', formattedData) // Debug log
             setChartData(formattedData)
             setCurrentMemory(formattedData[formattedData.length - 1]?.value || 0)
+            setError(null) // Clear any previous errors
           } else {
-            throw new Error('No chart data available')
+            throw new Error('No chart data available - API returned empty data')
           }
         } catch (apiError) {
-          console.log('No real metrics available, using mock data')
-          // Fall back to mock data
-          const mockData = generateMockData()
-          setChartData(mockData)
-          setCurrentMemory(mockData[mockData.length - 1]?.value || 0)
+          console.log('API Error:', apiError)
+          throw apiError // Re-throw to be caught by outer catch
         }
         
-        setError(null)
       } catch (err) {
         console.error('Failed to fetch memory data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load memory data')
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load memory data'
+        setError(`Using mock data - ${errorMessage}`)
         
-        // Still show mock data on error
+        // Fall back to mock data on error
         const mockData = generateMockData()
         setChartData(mockData)
         setCurrentMemory(mockData[mockData.length - 1]?.value || 0)
@@ -193,7 +194,7 @@ const MemoryChart = () => {
         <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            Last 2 hours (5-min intervals)
+            Last 1 hour (5-min intervals)
           </div>
           <div>
             Updates every 30 seconds

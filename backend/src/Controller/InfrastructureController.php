@@ -220,9 +220,31 @@ final class InfrastructureController extends AbstractController
     public function metricsChart(string $source, string $metricName, Request $request): JsonResponse
     {
         $hours = (int) $request->query->get('hours', 24);
-        $interval = $request->query->get('interval', '1 hour'); // 1 hour, 30 minutes, etc.
         
         $since = new \DateTimeImmutable("-{$hours} hours");
+
+        // Determine aggregation interval based on time period
+        if ($hours <= 4) {
+            // For 4 hours or less, group by 5-minute intervals
+            $interval = '5 minutes';
+            $formatString = 'Y-m-d H:i:00'; // Group by 5-minute intervals
+            $roundToMinutes = 5;
+        } elseif ($hours <= 12) {
+            // For 12 hours or less, group by 15-minute intervals
+            $interval = '15 minutes';
+            $formatString = 'Y-m-d H:i:00';
+            $roundToMinutes = 15;
+        } elseif ($hours <= 48) {
+            // For 48 hours or less, group by 1-hour intervals
+            $interval = '1 hour';
+            $formatString = 'Y-m-d H:00:00';
+            $roundToMinutes = 60;
+        } else {
+            // For longer periods, group by 4-hour intervals
+            $interval = '4 hours';
+            $formatString = 'Y-m-d H:00:00';
+            $roundToMinutes = 240;
+        }
 
         $qb = $this->entityManager
             ->getRepository(InfrastructureMetric::class)
@@ -240,7 +262,26 @@ final class InfrastructureController extends AbstractController
         // Group metrics by time interval for charting
         $chartData = [];
         foreach ($metrics as $metric) {
-            $timeKey = $metric->getRecordedAt()->format('Y-m-d H:00:00'); // Group by hour
+            $recordedAt = $metric->getRecordedAt();
+            
+            // Round to the appropriate interval
+            if ($roundToMinutes < 60) {
+                // Round to nearest X minutes
+                $minutes = (int) $recordedAt->format('i');
+                $roundedMinutes = floor($minutes / $roundToMinutes) * $roundToMinutes;
+                $timeKey = $recordedAt->format('Y-m-d H:') . sprintf('%02d:00', $roundedMinutes);
+            } else {
+                // Round to hours or larger intervals
+                if ($roundToMinutes === 60) {
+                    $timeKey = $recordedAt->format('Y-m-d H:00:00');
+                } else {
+                    // 4-hour intervals
+                    $hour = (int) $recordedAt->format('H');
+                    $roundedHour = floor($hour / 4) * 4;
+                    $timeKey = $recordedAt->format('Y-m-d ') . sprintf('%02d:00:00', $roundedHour);
+                }
+            }
+            
             if (!isset($chartData[$timeKey])) {
                 $chartData[$timeKey] = [
                     'timestamp' => $timeKey,
