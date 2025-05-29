@@ -176,46 +176,62 @@ class CollectMetricsCommand extends Command
     
     private function calculateCpuUsage(array $container): float
     {
-        // Generate realistic CPU usage based on container characteristics
-        $baseCpu = 15; // Base CPU usage
-        
-        // Add variation based on container name patterns
-        $name = $container['name'] ?? '';
-        if (str_contains($name, 'database') || str_contains($name, 'mysql')) {
-            $baseCpu += 20; // Database containers use more CPU
-        } elseif (str_contains($name, 'frontend') || str_contains($name, 'nginx')) {
-            $baseCpu += 10; // Web servers moderate CPU
-        } elseif (str_contains($name, 'backend') || str_contains($name, 'api')) {
-            $baseCpu += 25; // API servers higher CPU
+        try {
+            // Get real CPU stats from Docker API
+            $stats = $this->dockerService->getContainerStats($container['id']);
+            
+            if (!isset($stats['cpu_stats']) || !isset($stats['precpu_stats'])) {
+                // Fallback to minimal usage if stats unavailable
+                return 0.5;
+            }
+            
+            $cpuStats = $stats['cpu_stats'];
+            $preCpuStats = $stats['precpu_stats'];
+            
+            // Calculate CPU percentage using Docker formula
+            $cpuDelta = $cpuStats['cpu_usage']['total_usage'] - $preCpuStats['cpu_usage']['total_usage'];
+            $systemDelta = $cpuStats['system_cpu_usage'] - $preCpuStats['system_cpu_usage'];
+            $numberCpus = $cpuStats['online_cpus'] ?? 1;
+            
+            if ($systemDelta > 0 && $cpuDelta > 0) {
+                $cpuPercent = ($cpuDelta / $systemDelta) * $numberCpus * 100.0;
+                return round(min(100.0, max(0.0, $cpuPercent)), 2);
+            }
+            
+            return 0.0;
+        } catch (\Exception $e) {
+            // Log error and return minimal usage
+            error_log("Failed to get CPU stats for container {$container['id']}: " . $e->getMessage());
+            return 0.1; // Very low CPU when stats unavailable
         }
-        
-        // Add random variation ±10%
-        $variation = (random_int(-10, 10) / 100) * $baseCpu;
-        $cpu = $baseCpu + $variation;
-        
-        return max(1, min(95, $cpu)); // Clamp between 1-95%
     }
     
     private function calculateMemoryUsage(array $container): float
     {
-        // Generate realistic memory usage
-        $baseMemory = 40; // Base memory usage
-        
-        // Add variation based on container type
-        $name = $container['name'] ?? '';
-        if (str_contains($name, 'database') || str_contains($name, 'mysql')) {
-            $baseMemory += 30; // Database containers use more memory
-        } elseif (str_contains($name, 'frontend') || str_contains($name, 'nginx')) {
-            $baseMemory += 5; // Web servers low memory
-        } elseif (str_contains($name, 'backend') || str_contains($name, 'api')) {
-            $baseMemory += 20; // API servers moderate memory
+        try {
+            // Get real memory stats from Docker API
+            $stats = $this->dockerService->getContainerStats($container['id']);
+            
+            if (!isset($stats['memory_stats']['usage']) || !isset($stats['memory_stats']['limit'])) {
+                // Fallback to minimal usage if stats unavailable
+                return 5.0;
+            }
+            
+            $memoryUsage = $stats['memory_stats']['usage'];
+            $memoryLimit = $stats['memory_stats']['limit'];
+            
+            // Calculate memory percentage
+            if ($memoryLimit > 0) {
+                $memoryPercent = ($memoryUsage / $memoryLimit) * 100.0;
+                return round(min(100.0, max(0.0, $memoryPercent)), 2);
+            }
+            
+            return 0.0;
+        } catch (\Exception $e) {
+            // Log error and return minimal usage
+            error_log("Failed to get memory stats for container {$container['id']}: " . $e->getMessage());
+            return 5.0; // Low memory when stats unavailable
         }
-        
-        // Add random variation ±8%
-        $variation = (random_int(-8, 8) / 100) * $baseMemory;
-        $memory = $baseMemory + $variation;
-        
-        return max(10, min(90, $memory)); // Clamp between 10-90%
     }
     
     private function getAlertLevel(float $value, float $warningThreshold, float $criticalThreshold): string

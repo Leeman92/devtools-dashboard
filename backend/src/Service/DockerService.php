@@ -199,6 +199,48 @@ final readonly class DockerService
     }
 
     /**
+     * Get real-time container statistics (CPU, memory, etc.).
+     */
+    public function getContainerStats(string $containerId): array
+    {
+        try {
+            $endpoint = "/containers/{$containerId}/stats?stream=false";
+            $stats = $this->makeDockerApiRequest($endpoint);
+            
+            $this->logger->debug('Retrieved container stats', [
+                'container_id' => $containerId,
+                'cpu_usage' => $stats['cpu_stats']['cpu_usage']['total_usage'] ?? 'N/A',
+                'memory_usage' => $stats['memory_stats']['usage'] ?? 'N/A',
+            ]);
+
+            return $stats;
+
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to retrieve container stats', [
+                'container_id' => $containerId,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Return empty stats structure to prevent fatal errors
+            return [
+                'cpu_stats' => [
+                    'cpu_usage' => ['total_usage' => 0],
+                    'system_cpu_usage' => 0,
+                    'online_cpus' => 1,
+                ],
+                'precpu_stats' => [
+                    'cpu_usage' => ['total_usage' => 0],
+                    'system_cpu_usage' => 0,
+                ],
+                'memory_stats' => [
+                    'usage' => 0,
+                    'limit' => 1,
+                ],
+            ];
+        }
+    }
+
+    /**
      * Get service logs.
      */
     public function getServiceLogs(string $serviceId, int $lines = 100): array
