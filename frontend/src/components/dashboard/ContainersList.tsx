@@ -29,16 +29,15 @@ const ContainersList = ({
     try {
       setActionLoading(prev => ({ ...prev, [containerId]: action }))
       
-      let result;
       switch (action) {
         case 'start':
-          result = await api.docker.start(containerId)
+          await api.docker.start(containerId)
           break
         case 'stop':
-          result = await api.docker.stop(containerId)
+          await api.docker.stop(containerId)
           break
         case 'restart':
-          result = await api.docker.restart(containerId)
+          await api.docker.restart(containerId)
           break
       }
 

@@ -4,6 +4,7 @@ import type { DockerContainer } from '@/types/docker'
 import StatsCards from './StatsCards'
 import ContainersList from './ContainersList'
 import CPUChart from './CPUChart'
+import MemoryChart from './MemoryChart'
 import TabContent from './TabContent'
 
 interface DashboardProps {
@@ -57,8 +58,14 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
           recentCommits={recentCommits}
         />
 
+        {/* Monitoring Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CPUChart />
+          <MemoryChart />
+        </div>
+
         {/* Content Grid */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Docker Containers */}
           <ContainersList 
             containers={containers}
@@ -66,9 +73,6 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
             showAll={false}
             onContainerAction={fetchContainers}
           />
-
-          {/* Container CPU Usage Chart */}
-          <CPUChart />
         </div>
       </div>
     )

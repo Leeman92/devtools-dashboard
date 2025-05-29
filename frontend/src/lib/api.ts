@@ -97,12 +97,33 @@ export const api = {
     start: (id: string) => apiClient.post(`/docker/containers/${id}/start`),
     stop: (id: string) => apiClient.post(`/docker/containers/${id}/stop`),
     restart: (id: string) => apiClient.post(`/docker/containers/${id}/restart`),
-    logs: (id: string) => apiClient.get(`/docker/containers/${id}/logs`),
+    logs: (id: string, lines?: number) => apiClient.get(`/docker/containers/${id}/logs${lines ? `?lines=${lines}` : ''}`),
+    services: () => apiClient.get('/docker/services'),
   },
 
   // Infrastructure
   infrastructure: {
     health: () => apiClient.get('/infrastructure/health'),
-    metrics: () => apiClient.get('/infrastructure/metrics'),
+    metrics: (params?: { source?: string; metric?: string; hours?: number }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.source) searchParams.append('source', params.source);
+      if (params?.metric) searchParams.append('metric', params.metric);
+      if (params?.hours) searchParams.append('hours', params.hours.toString());
+      
+      const queryString = searchParams.toString();
+      return apiClient.get(`/infrastructure/metrics${queryString ? `?${queryString}` : ''}`);
+    },
+    latestMetrics: () => apiClient.get('/infrastructure/metrics/latest'),
+    metricsSummary: (hours?: number) => apiClient.get(`/infrastructure/metrics/summary${hours ? `?hours=${hours}` : ''}`),
+    chartData: (source: string, metricName: string, hours?: number, interval?: string) => {
+      const searchParams = new URLSearchParams();
+      if (hours) searchParams.append('hours', hours.toString());
+      if (interval) searchParams.append('interval', interval);
+      
+      const queryString = searchParams.toString();
+      return apiClient.get(`/infrastructure/metrics/chart/${source}/${metricName}${queryString ? `?${queryString}` : ''}`);
+    },
+    sources: () => apiClient.get('/infrastructure/metrics/sources'),
+    metricNames: (source?: string) => apiClient.get(`/infrastructure/metrics/names${source ? `?source=${source}` : ''}`),
   },
 }; 

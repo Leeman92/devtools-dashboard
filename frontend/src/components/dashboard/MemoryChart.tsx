@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Activity, TrendingUp, Cpu } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { Activity, TrendingUp, MemoryStick } from 'lucide-react'
 import { api } from '@/lib/api'
 import { format } from 'date-fns'
 import type { ChartDataPoint, ChartResponse } from '@/types/metrics'
@@ -10,20 +10,20 @@ interface ChartData extends ChartDataPoint {
   formattedTime: string
 }
 
-const CPUChart = () => {
+const MemoryChart = () => {
   const [chartData, setChartData] = useState<ChartData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [currentCPU, setCurrentCPU] = useState<number>(0)
+  const [currentMemory, setCurrentMemory] = useState<number>(0)
 
-  // Generate mock CPU data since we don't have real container stats yet
+  // Generate mock memory data
   const generateMockData = (): ChartData[] => {
     const now = new Date()
     const data: ChartData[] = []
     
     for (let i = 23; i >= 0; i--) {
       const timestamp = new Date(now.getTime() - i * 5 * 60 * 1000) // 5-minute intervals
-      const value = Math.random() * 100 // Random CPU percentage 0-100
+      const value = 30 + Math.random() * 50 // Memory between 30-80%
       
       data.push({
         timestamp: timestamp.toISOString(),
@@ -36,13 +36,13 @@ const CPUChart = () => {
   }
 
   useEffect(() => {
-    const fetchCPUData = async () => {
+    const fetchMemoryData = async () => {
       try {
         setLoading(true)
         
         // Try to fetch real data from infrastructure metrics
         try {
-          const response: ChartResponse = await api.infrastructure.chartData('docker', 'cpu_percent', 2)
+          const response: ChartResponse = await api.infrastructure.chartData('docker', 'memory_percent', 2)
           
           if (response.chart_data && response.chart_data.length > 0) {
             const formattedData: ChartData[] = response.chart_data.map(point => ({
@@ -50,7 +50,7 @@ const CPUChart = () => {
               formattedTime: format(new Date(point.timestamp), 'HH:mm')
             }))
             setChartData(formattedData)
-            setCurrentCPU(formattedData[formattedData.length - 1]?.value || 0)
+            setCurrentMemory(formattedData[formattedData.length - 1]?.value || 0)
           } else {
             throw new Error('No chart data available')
           }
@@ -59,27 +59,27 @@ const CPUChart = () => {
           // Fall back to mock data
           const mockData = generateMockData()
           setChartData(mockData)
-          setCurrentCPU(mockData[mockData.length - 1]?.value || 0)
+          setCurrentMemory(mockData[mockData.length - 1]?.value || 0)
         }
         
         setError(null)
       } catch (err) {
-        console.error('Failed to fetch CPU data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load CPU data')
+        console.error('Failed to fetch memory data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load memory data')
         
         // Still show mock data on error
         const mockData = generateMockData()
         setChartData(mockData)
-        setCurrentCPU(mockData[mockData.length - 1]?.value || 0)
+        setCurrentMemory(mockData[mockData.length - 1]?.value || 0)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchCPUData()
+    fetchMemoryData()
     
     // Update every 30 seconds
-    const interval = setInterval(fetchCPUData, 30000)
+    const interval = setInterval(fetchMemoryData, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -89,28 +89,28 @@ const CPUChart = () => {
 
   const formatYAxisTick = (value: number) => `${value}%`
 
-  const getCPUStatus = (cpu: number) => {
-    if (cpu > 80) return { color: 'text-red-600', bgColor: 'bg-red-50', status: 'High' }
-    if (cpu > 60) return { color: 'text-yellow-600', bgColor: 'bg-yellow-50', status: 'Medium' }
+  const getMemoryStatus = (memory: number) => {
+    if (memory > 85) return { color: 'text-red-600', bgColor: 'bg-red-50', status: 'Critical' }
+    if (memory > 70) return { color: 'text-yellow-600', bgColor: 'bg-yellow-50', status: 'High' }
     return { color: 'text-green-600', bgColor: 'bg-green-50', status: 'Normal' }
   }
 
-  const cpuStatus = getCPUStatus(currentCPU)
+  const memoryStatus = getMemoryStatus(currentMemory)
 
   if (loading) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cpu className="h-5 w-5 text-blue-500" />
-            CPU Usage
+            <MemoryStick className="h-5 w-5 text-purple-500" />
+            Memory Usage
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center justify-center">
             <div className="flex items-center gap-2 text-gray-500">
               <Activity className="h-5 w-5 animate-pulse" />
-              Loading CPU data...
+              Loading memory data...
             </div>
           </div>
         </CardContent>
@@ -123,15 +123,15 @@ const CPUChart = () => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Cpu className="h-5 w-5 text-blue-500" />
-            CPU Usage
+            <MemoryStick className="h-5 w-5 text-purple-500" />
+            Memory Usage
           </div>
           <div className="flex items-center gap-2">
-            <div className={`px-3 py-1 rounded-full text-sm font-medium ${cpuStatus.bgColor} ${cpuStatus.color}`}>
-              {currentCPU.toFixed(1)}%
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${memoryStatus.bgColor} ${memoryStatus.color}`}>
+              {currentMemory.toFixed(1)}%
             </div>
-            <div className={`px-2 py-1 rounded text-xs ${cpuStatus.bgColor} ${cpuStatus.color}`}>
-              {cpuStatus.status}
+            <div className={`px-2 py-1 rounded text-xs ${memoryStatus.bgColor} ${memoryStatus.color}`}>
+              {memoryStatus.status}
             </div>
           </div>
         </CardTitle>
@@ -148,7 +148,13 @@ const CPUChart = () => {
         
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="memoryGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis 
                 dataKey="formattedTime" 
@@ -171,15 +177,16 @@ const CPUChart = () => {
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
               />
-              <Line 
+              <Area 
                 type="monotone" 
                 dataKey="value" 
-                stroke="#3b82f6" 
+                stroke="#8b5cf6" 
                 strokeWidth={2}
-                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, fill: '#1d4ed8' }}
+                fill="url(#memoryGradient)"
+                dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, fill: '#7c3aed' }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
         
@@ -197,4 +204,4 @@ const CPUChart = () => {
   )
 }
 
-export default CPUChart
+export default MemoryChart 

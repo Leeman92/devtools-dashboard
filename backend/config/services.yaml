@@ -45,11 +45,6 @@ services:
         arguments:
             $logger: '@monolog.logger.auth'
 
-    # Command-specific logger configurations
-    App\Command\CollectMetricsCommand:
-        arguments:
-            $logger: '@monolog.logger.metrics'
-
     # Exception listener for comprehensive error logging
     App\EventListener\ExceptionListener:
         arguments:
