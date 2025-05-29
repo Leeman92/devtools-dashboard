@@ -46,11 +46,19 @@ const MemoryChart = () => {
           console.log('Memory API Response:', response) // Debug log
           
           if (response.chart_data && response.chart_data.length > 0) {
-            const formattedData: ChartData[] = response.chart_data.map(point => ({
-              timestamp: point.timestamp,
-              value: point.avg_value || point.value || 0, // Use avg_value from API, fallback to value
-              formattedTime: format(new Date(point.timestamp), 'HH:mm')
-            }))
+            const formattedData: ChartData[] = response.chart_data.map(point => {
+              const date = new Date(point.timestamp)
+              const formattedTime = format(date, 'HH:mm')
+              
+              // Debug timezone conversion
+              console.log(`Memory Timestamp: ${point.timestamp} -> Local: ${date.toLocaleString()} -> Chart: ${formattedTime}`)
+              
+              return {
+                timestamp: point.timestamp,
+                value: point.avg_value || point.value || 0, // Use avg_value from API, fallback to value
+                formattedTime: formattedTime
+              }
+            })
             console.log('Formatted Memory data:', formattedData) // Debug log
             setChartData(formattedData)
             setCurrentMemory(formattedData[formattedData.length - 1]?.value || 0)

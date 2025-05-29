@@ -283,8 +283,10 @@ final class InfrastructureController extends AbstractController
             }
             
             if (!isset($chartData[$timeKey])) {
+                // Create a proper DateTime object for the rounded timestamp and convert to ISO format
+                $roundedDateTime = new \DateTimeImmutable($timeKey, $recordedAt->getTimezone());
                 $chartData[$timeKey] = [
-                    'timestamp' => $timeKey,
+                    'timestamp' => $roundedDateTime->format('c'), // ISO 8601 format with timezone
                     'values' => [],
                     'avg_value' => 0,
                     'min_value' => null,
