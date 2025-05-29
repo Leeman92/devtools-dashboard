@@ -63,7 +63,6 @@ final readonly class DockerService
         try {
             $containers = $this->makeDockerApiRequest('/containers/json?all=true');
             $result = [];
-
             foreach ($containers as $container) {
                 $result[] = $this->parseContainerData($container);
             }
@@ -180,7 +179,7 @@ final readonly class DockerService
             'state' => $container['State'] ?? '',
             'ports' => $this->parsePorts($container['Ports'] ?? []),
             'labels' => $container['Labels'] ?? [],
-            'created' => $container['Created'] ?? null,
+            'created' => $container['Created'] * 1000 ?? null, // Convert to milliseconds for JS
             'network_mode' => $container['HostConfig']['NetworkMode'] ?? '',
         ];
     }

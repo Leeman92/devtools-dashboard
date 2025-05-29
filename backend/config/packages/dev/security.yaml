@@ -5,4 +5,4 @@ security:
         - { path: ^/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/test, roles: PUBLIC_ACCESS }  # Public in development
         - { path: ^/api/auth, roles: ROLE_USER }
-        - { path: ^/api, roles: ROLE_USER } 
+        - { path: ^/api, roles: PUBLIC_ACCESS } 
