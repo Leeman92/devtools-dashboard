@@ -50,14 +50,17 @@ Welcome to the DevTools Dashboard documentation. This directory contains compreh
 - **React 18+** with TypeScript for type-safe development
 - **Vite** for fast development and optimized builds
 - **Tailwind CSS** with shadcn/ui components
+- **Recharts** for real-time data visualization and charts
+- **date-fns** for timezone-aware date formatting
 - **JWT Authentication** with context providers
-- **Real-time Updates** via polling (WebSocket planned)
+- **Real-time Updates** via 30-second polling (WebSocket planned)
 
 #### Backend
 - **Symfony 7** with PHP 8.4+ for modern API development
-- **Doctrine ORM** for database operations
+- **Doctrine ORM** for database operations and metrics storage
 - **JWT Authentication** for stateless security
 - **Docker API Integration** for container management
+- **Metrics Collection System** with automated cleanup
 - **Structured Logging** with Monolog
 
 #### Infrastructure
@@ -208,21 +211,24 @@ git commit -m "feat: description of changes"
 ### ✅ Completed Features
 - **Full-stack Authentication**: JWT-based login system
 - **Docker Monitoring**: Real-time container status and management
-- **Modern UI**: React TypeScript with Tailwind CSS
+- **Container Management**: Start/stop/restart actions with visual feedback
+- **Real-time Charts**: CPU and Memory usage visualization with Recharts
+- **Metrics Collection**: Automated data collection with configurable cleanup
+- **Modern UI**: React TypeScript with Tailwind CSS and gradient designs
 - **Production Deployment**: Docker Swarm with proper orchestration
 - **Secrets Management**: HashiCorp Vault integration
 - **Component Architecture**: Modular, maintainable frontend structure
+- **Timezone Support**: Proper UTC to local time conversion
 
 ### 🚧 In Progress
-- **Enhanced Container Management**: Start/stop/restart actions
-- **Real-time Charts**: CPU/memory monitoring visualizations
 - **WebSocket Integration**: Real-time updates without polling
+- **Enhanced Container Features**: Log streaming and terminal access
+- **Advanced Monitoring**: System-level metrics and performance analytics
 
-### 📋 Planned Features
-- **CI/CD Integration**: GitHub Actions monitoring
-- **Repository Management**: Git repository integration
-- **Advanced Monitoring**: Comprehensive metrics dashboard
-- **Alert System**: Configurable notifications
+### 📋 Next Priority Features
+- **Container Logs**: Real-time log streaming with search and filtering
+- **WebSocket Connection**: Eliminate polling for true real-time updates
+- **CI/CD Integration**: GitHub Actions workflow monitoring
 
 ## 🤝 Contributing
 
@@ -256,4 +262,4 @@ When making changes to the project:
 
 ---
 
-**Note**: This documentation is actively maintained and updated with each release. Last updated: December 2024 
+**Note**: This documentation is actively maintained and updated with each release. Last updated: May 2025 

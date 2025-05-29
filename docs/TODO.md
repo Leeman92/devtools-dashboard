@@ -1,6 +1,6 @@
 # DevTools Dashboard - TODO & Status
 
-## 🎯 Current Status (May 26, 2025)
+## 🎯 Current Status (May 2025)
 
 ### ✅ **FULLY WORKING FULL-STACK APPLICATION**
 - [x] **Backend API Development** - Docker container monitoring with cURL-based Docker API integration ✅
@@ -10,30 +10,55 @@
 - [x] **Professional UI Design** - Beautiful gradient cards, responsive layout, dark sidebar navigation ✅
 - [x] **Development Environment** - Docker-first development with hot reload for both frontend and backend ✅
 - [x] **Production Deployment** - Docker Swarm deployment with proper Docker socket access ✅
+- [x] **Real-time Monitoring Charts** - CPU and Memory charts with Recharts library ✅
+- [x] **Container Management** - Start/stop/restart functionality with visual feedback ✅
+- [x] **Metrics Collection System** - Automated data collection with configurable cleanup ✅
+
+### 🎉 **RECENTLY COMPLETED FEATURES**
+- **✅ Real-time Charts**: CPU and Memory usage visualization with Recharts
+- **✅ Dynamic Aggregation**: 5-minute intervals for 1-hour periods, 15-minute for 12-hour, etc.
+- **✅ Container Actions**: Start, stop, restart containers with loading states and success feedback
+- **✅ Metrics Collection**: Automated system with `php bin/console app:collect-metrics` command
+- **✅ Timezone Handling**: Proper UTC to local time conversion in charts
+- **✅ Enhanced API**: Infrastructure endpoints with historical data aggregation
+- **✅ TypeScript Types**: Comprehensive type definitions for metrics and chart data
 
 ### 🎉 **WORKING FEATURES**
 - **✅ Backend API**: Returns actual container data from Docker socket at `/api/docker/containers`
-- **✅ Frontend Dashboard**: Modern React interface with real-time updates every 5 seconds
+- **✅ Real-time Charts**: Live CPU/Memory monitoring with 5-minute intervals
+- **✅ Container Management**: Interactive start/stop/restart with visual feedback
+- **✅ Frontend Dashboard**: Modern React interface with 30-second auto-refresh
 - **✅ Beautiful UI**: Gradient cards (blue, green, orange) with responsive design
 - **✅ Tailwind CSS**: Working v3.4.0 with proper ES module configuration
 - **✅ Navigation**: Sidebar with Dashboard, Containers, CI/CD, Repositories tabs
 - **✅ Authentication System**: JWT-based auth with login/logout functionality
 - **✅ Docker Integration**: Full Docker API access for container monitoring
 - **✅ Development Scripts**: Complete Docker-first development workflow
+- **✅ Timezone Support**: Proper local time display in charts and interfaces
 
 ---
 
 ## 🚀 **Next Development Priorities**
 
-### 1. **Enhanced Container Management** 🐳 (High Priority)
-- [ ] **Container Actions**:
-  - [ ] Start/stop/restart containers with confirmation dialogs
-  - [ ] View container logs in real-time with WebSocket connection
-  - [ ] Container resource usage graphs (CPU, memory, network)
+### 1. **WebSocket Integration** 🔄 (High Priority)
+- [ ] **Real-time Updates**:
+  - [ ] WebSocket connection for live data updates (eliminate 30-second polling)
+  - [ ] Live log streaming for containers
+  - [ ] Instant status notifications and alerts
+  - [ ] Real-time event notifications (container start/stop/restart)
+- [ ] **Enhanced User Experience**:
+  - [ ] Loading states with skeleton components
+  - [ ] Optimistic updates for better responsiveness
+  - [ ] Connection status indicators
+
+### 2. **Advanced Container Features** 🐳 (High Priority) 
+- [ ] **Container Logs & Terminal**:
+  - [ ] Real-time log streaming with search and filtering
   - [ ] Container shell access (web terminal using xterm.js)
-- [ ] **Advanced Container Features**:
-  - [ ] Container health status monitoring
-  - [ ] Port mapping management
+  - [ ] Log export and download functionality
+- [ ] **Advanced Container Management**:
+  - [ ] Container health status monitoring with detailed metrics
+  - [ ] Port mapping management and visualization
   - [ ] Volume and network inspection
   - [ ] Container image management (pull, remove, inspect)
 - [ ] **Docker Compose Support**:
@@ -41,22 +66,22 @@
   - [ ] Service dependency visualization
   - [ ] Stack deployment and management
 
-### 2. **Real-time Monitoring & Charts** 📊 (High Priority)
-- [ ] **Live Metrics Dashboard**:
-  - [ ] Real-time CPU/memory charts using Recharts library
-  - [ ] System metrics (host CPU, memory, disk usage)
+### 3. **Enhanced Monitoring Dashboard** 📊 (Medium Priority)
+- [ ] **System-level Metrics**:
+  - [ ] Host system metrics (CPU, memory, disk usage)
   - [ ] Network statistics and throughput graphs
-  - [ ] Historical data storage and trend analysis
-- [ ] **WebSocket Integration**:
-  - [ ] Real-time updates without polling
-  - [ ] Live log streaming
-  - [ ] Instant status notifications
-- [ ] **Performance Monitoring**:
-  - [ ] Container performance metrics
-  - [ ] Application response time tracking
+  - [ ] Docker daemon metrics and health
+- [ ] **Advanced Chart Features**:
+  - [ ] Zoom and pan functionality for historical data
+  - [ ] Custom time range selection
+  - [ ] Chart export and sharing
+  - [ ] Alert thresholds and visual indicators
+- [ ] **Performance Analytics**:
   - [ ] Resource usage alerts and thresholds
+  - [ ] Performance trending and forecasting
+  - [ ] Capacity planning recommendations
 
-### 3. **CI/CD Integration** 🔄 (Medium Priority)
+### 4. **CI/CD Integration** 🔄 (Medium Priority)
 - [ ] **GitHub Actions Monitoring**:
   - [ ] Connect to GitHub API for workflow status
   - [ ] Display pipeline status in CI/CD tab
@@ -68,7 +93,7 @@
   - [ ] Deployment history tracking
   - [ ] Integration with Harbor registry
 
-### 4. **Advanced Authentication & Security** 🔐 (Medium Priority)
+### 5. **Advanced Authentication & Security** 🔐 (Medium Priority)
 - [ ] **Enhanced User Management**:
   - [ ] User profile management with avatar upload
   - [ ] Role-based access control (admin, viewer, operator)
@@ -80,7 +105,7 @@
   - [ ] Audit logging for sensitive operations
   - [ ] CSRF protection and security headers
 
-### 5. **Production Features** 🚀 (Low Priority)
+### 6. **Production Features** 🚀 (Low Priority)
 - [ ] **Advanced Deployment**:
   - [ ] Blue-green deployment support
   - [ ] Rollback functionality
@@ -113,7 +138,9 @@
 - **Build Tool**: Vite 6.3.5 for fast development and optimized builds
 - **Styling**: Tailwind CSS v3.4.0 with utility-first approach
 - **Components**: shadcn/ui for accessible, customizable components
+- **Charts**: Recharts library for real-time data visualization
 - **Icons**: Lucide React for consistent iconography
+- **Date Handling**: date-fns for timezone-aware date formatting
 - **State Management**: React hooks (useState, useEffect) with plans for Zustand for global state
 
 ### **Component Structure**
@@ -122,19 +149,36 @@ frontend/src/
 ├── components/
 │   ├── ui/           # shadcn/ui components (Button, Card, Avatar, etc.)
 │   ├── auth/         # Authentication components (Login, Register, etc.)
-│   └── dashboard/    # Dashboard-specific components (planned)
+│   └── dashboard/    # Dashboard-specific components
+│       ├── Dashboard.tsx      # Main dashboard layout with charts
+│       ├── CPUChart.tsx       # Real-time CPU usage line chart
+│       ├── MemoryChart.tsx    # Real-time memory usage area chart
+│       ├── ContainersList.tsx # Container management with actions
+│       ├── StatsCards.tsx     # Overview statistics cards
+│       └── TabContent.tsx     # Dynamic tab content renderer
 ├── hooks/            # Custom React hooks
-├── lib/              # Utility functions and configurations
+├── lib/              # Utility functions and API client
 ├── types/            # TypeScript type definitions
+│   ├── docker.ts     # Docker container and API types
+│   └── metrics.ts    # Metrics and chart data types
 └── App.tsx           # Main application component with full dashboard
 ```
 
 ### **Design System**
-- **Colors**: Blue (#3b82f6), Green (#10b981), Orange (#fb923c) gradients
+- **Colors**: Blue (#3b82f6), Green (#10b981), Orange (#fb923c), Purple (#8b5cf6) gradients
+- **Charts**: Line charts for CPU, area charts for memory with gradients
 - **Typography**: System fonts with Tailwind typography scale
 - **Spacing**: Consistent 6px grid system (gap-6, p-6, mb-8)
 - **Borders**: Rounded corners (rounded-xl) for modern appearance
 - **Shadows**: Subtle shadows (shadow-lg) for depth and elevation
+- **Interactive Elements**: Hover states, loading spinners, success feedback
+
+### **Real-time Features**
+- **Auto-refresh**: Charts and container data update every 30 seconds
+- **Dynamic Intervals**: 5-minute intervals for 1-hour charts, 15-minute for 12-hour
+- **Timezone Handling**: Automatic UTC to local time conversion
+- **Visual Feedback**: Loading states, success animations, error handling
+- **Responsive Design**: Mobile-first approach with breakpoint optimization
 
 ---
 
@@ -209,10 +253,26 @@ docker compose up -d                    # Backend only
 ./scripts/docker-php.sh migrate                # Run migrations
 ./scripts/docker-php.sh console doctrine:migrations:status  # Check status
 
+# Metrics collection
+./scripts/docker-php.sh collect-metrics        # Collect real-time metrics
+./scripts/docker-php.sh collect-metrics --dry-run  # Preview collection
+./scripts/docker-php.sh generate-metrics       # Generate sample data
+./scripts/docker-php.sh collect-metrics --cleanup-days=1  # With cleanup
+
 # Development tools
 ./scripts/docker-php.sh console cache:clear    # Clear cache
 ./scripts/docker-php.sh test                   # Run tests
 ./scripts/docker-php.sh console lint:container # Code quality
+```
+
+### **Production Metrics Collection**
+For production environments, set up automated metrics collection:
+```bash
+# Every minute (recommended for real-time data)
+* * * * * docker exec $(docker ps --filter "name=dashboard_dashboard-backend.1" --format "{{.Names}}" | head -1) php bin/console app:collect-metrics --cleanup-days=1
+
+# Or every 5 minutes for less frequent collection
+*/5 * * * * docker exec $(docker ps --filter "name=dashboard_dashboard-backend.1" --format "{{.Names}}" | head -1) php bin/console app:collect-metrics --cleanup-days=1
 ```
 
 ---

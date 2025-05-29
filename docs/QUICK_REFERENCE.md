@@ -245,4 +245,111 @@ GRAFANA_URL="http://localhost:3000"
 - [Symfony Documentation](https://symfony.com/doc/current/index.html)
 - [Doctrine ORM](https://www.doctrine-project.org/projects/orm.html)
 - [Docker API Reference](https://docs.docker.com/engine/api/)
-- [GitHub API Documentation](https://docs.github.com/en/rest) 
+- [GitHub API Documentation](https://docs.github.com/en/rest)
+
+## 🚀 **Quick Start Commands**
+
+### **Full Development Environment**
+```bash
+# Start everything (backend + frontend + database)
+./scripts/dev.sh
+
+# Fix container conflicts if needed
+docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
+./scripts/docker-node.sh dev
+
+# Validate complete setup
+./scripts/validate-setup.sh
+```
+
+### **Backend Commands** (PHP/Symfony)
+```bash
+# Dependency Management
+./scripts/docker-php.sh install            # Install composer dependencies
+./scripts/docker-php.sh update             # Update dependencies
+./scripts/docker-php.sh validate           # Validate composer.json/lock
+
+# Database Operations
+./scripts/docker-php.sh create-db          # Create database
+./scripts/docker-php.sh migrate            # Run migrations
+./scripts/docker-php.sh console doctrine:migrations:status
+
+# Metrics Collection (NEW)
+./scripts/docker-php.sh collect-metrics    # Collect real-time metrics
+./scripts/docker-php.sh collect-metrics --dry-run  # Preview collection
+./scripts/docker-php.sh generate-metrics   # Generate sample data
+./scripts/docker-php.sh collect-metrics --cleanup-days=1  # With cleanup
+
+# Development Tools
+./scripts/docker-php.sh console cache:clear    # Clear cache
+./scripts/docker-php.sh test                   # Run PHPUnit tests
+./scripts/docker-php.sh console lint:container # Code quality check
+```
+
+### **Frontend Commands** (React/TypeScript)
+```bash
+# Package Management
+./scripts/docker-node.sh install           # Install npm dependencies
+./scripts/docker-node.sh add <package>     # Add dependency
+./scripts/docker-node.sh add-dev <package> # Add dev dependency
+./scripts/docker-node.sh remove <package>  # Remove package
+
+# Development
+./scripts/docker-node.sh dev               # Start development server
+./scripts/docker-node.sh build             # Production build
+./scripts/docker-node.sh lint              # ESLint check
+./scripts/docker-node.sh clean             # Clean node_modules
+```
+
+## 📊 **API Endpoints & Features**
+
+### **Container Management API**
+```bash
+# Container operations
+GET  /api/docker/containers           # List all containers
+POST /api/docker/containers/{id}/start    # Start container
+POST /api/docker/containers/{id}/stop     # Stop container
+POST /api/docker/containers/{id}/restart  # Restart container
+
+# Test endpoints
+curl http://localhost:80/api/docker/containers
+curl -X POST http://localhost:80/api/docker/containers/{id}/start
+```
+
+### **Infrastructure Metrics API (NEW)**
+```bash
+# Metrics endpoints
+GET /api/infrastructure/metrics                    # Get all metrics
+GET /api/infrastructure/metrics/latest             # Latest metrics only
+GET /api/infrastructure/metrics/chart/{source}/{metric}?hours=1  # Chart data
+
+# Chart data examples
+curl "http://localhost:80/api/infrastructure/metrics/chart/docker/cpu_percent?hours=1"
+curl "http://localhost:80/api/infrastructure/metrics/chart/docker/memory_percent?hours=1"
+```
+
+### **Authentication API**
+```bash
+# Auth endpoints
+POST /api/auth/login     # JWT login
+POST /api/auth/logout    # Logout and invalidate token
+```
+
+## 🔄 **Real-time Features**
+
+### **Dashboard Auto-refresh**
+- **Charts**: Update every 30 seconds with new data
+- **Container List**: Refreshes every 5 seconds
+- **Dynamic Intervals**: 5-minute aggregation for 1-hour charts
+
+### **Interactive Features**
+- **Container Actions**: Start/stop/restart with visual feedback
+- **Loading States**: Spinners and skeleton components
+- **Success Feedback**: Green indicators for successful actions
+- **Error Handling**: Graceful fallback to mock data if API unavailable
+
+### **Chart Specifications**
+- **CPU Chart**: Line chart with blue gradient, shows last 1 hour
+- **Memory Chart**: Area chart with purple gradient, 5-minute intervals
+- **Timezone**: Automatic UTC to local time conversion
+- **Responsive**: Mobile-friendly with touch interactions 
