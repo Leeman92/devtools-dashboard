@@ -6,7 +6,7 @@ A full-stack web application for monitoring Docker containers and CI jobs with H
 
 This is a complete, working full-stack application with:
 - **Real-time Docker container monitoring** with live status updates
-- **Beautiful React + TypeScript frontend** with Tailwind CSS
+- **Beautiful React + TypeScript frontend** with modular component architecture
 - **JWT-based authentication system** with login/logout
 - **Docker-first development environment** with hot reload
 - **Production-ready deployment** with Docker Swarm
@@ -15,6 +15,7 @@ This is a complete, working full-stack application with:
 
 - ✅ **Real-time Docker container monitoring** - Live status updates every 5 seconds
 - ✅ **Modern, responsive UI** - React 18 + TypeScript with Tailwind CSS v3.4.0
+- ✅ **Modular component architecture** - Clean, maintainable frontend structure
 - ✅ **Authentication system** - JWT-based login/logout functionality
 - ✅ **RESTful API** - Built with Symfony 7.2 and Docker API integration
 - ✅ **Development environment** - Docker-first with hot reload for both frontend and backend
@@ -24,29 +25,28 @@ This is a complete, working full-stack application with:
 
 ## Tech Stack
 
-### Backend
-- Symfony 7.2
-- PHP 8.4+ with FrankenPHP
-- MariaDB 10.11 (external standalone container)
-- Docker API integration via cURL with Unix socket support
-- HashiCorp Vault for secrets management
-- Doctrine ORM with migrations
-
 ### Frontend
-- React 18 with TypeScript
-- Vite 6.3.5 for fast development and optimized builds
-- Tailwind CSS v3.4.0 with utility-first styling
-- shadcn/ui components for accessible, modern UI
-- Lucide React icons for consistent iconography
-- Responsive design with mobile-first approach
+- **React 18** with TypeScript and modern component patterns
+- **Vite 6.3.5** for fast development and optimized builds
+- **Tailwind CSS v3.4.0** with utility-first styling
+- **shadcn/ui components** for accessible, modern UI
+- **Lucide React icons** for consistent iconography
+- **Modular architecture** with organized component structure
+
+### Backend
+- **Symfony 7.2** with PHP 8.4+ and FrankenPHP
+- **MariaDB 10.11** (external standalone container)
+- **Docker API integration** via cURL with Unix socket support
+- **HashiCorp Vault** for secrets management
+- **Doctrine ORM** with migrations
 
 ### Infrastructure
-- Docker & Docker Compose
-- Docker Swarm for production deployment
-- External MySQL container with Docker volumes
-- GitHub Actions for automated CI/CD
-- HashiCorp Vault for secrets management
-- Nginx for SSL termination and reverse proxy
+- **Docker & Docker Compose** for containerization
+- **Docker Swarm** for production deployment
+- **External MySQL** container with Docker volumes
+- **GitHub Actions** for automated CI/CD
+- **HashiCorp Vault** for secrets management
+- **Nginx** for SSL termination and reverse proxy
 
 ## Prerequisites
 
@@ -59,55 +59,61 @@ This is a complete, working full-stack application with:
 
 ## Quick Start
 
-1. Clone the repository:
+1. **Clone and Setup**:
 ```bash
 git clone <repository-url>
 cd devtools-dashboard
+
+# Validate your environment
+./scripts/validate-setup.sh
 ```
 
-2. Set up environment variables:
-```bash
-# Backend
-cp backend/.env.example backend/.env
-# Edit backend/.env with your database credentials
-# Frontend environment variables are handled via Vite proxy configuration
-```
-
-3. Start the full development environment:
+2. **Start Development Environment**:
 ```bash
 # Start both backend and frontend (recommended)
 ./scripts/dev.sh
 
-# Or start services individually:
-# Backend only
-docker compose up -d
-
-# Frontend only  
-./scripts/docker-node.sh dev
-
-# Fix container conflicts if needed
-docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
-./scripts/docker-node.sh dev
+# Access the application:
+# - Frontend Dashboard: http://localhost:5173
+# - Backend API: http://localhost:80
+# - Database: MariaDB on localhost:3306
 ```
 
-4. Access the application:
-- **Frontend Dashboard**: http://localhost:5173 (Beautiful React interface)
-- **Backend API**: http://localhost:80 (Symfony API with Docker integration)
-- **Database**: MariaDB on localhost:3306
-
-## 🎉 What You'll See
-
+3. **What You'll See**:
 - **Modern Dashboard**: Beautiful gradient cards showing container status
 - **Real-time Updates**: Live container monitoring with 5-second refresh
 - **Responsive Design**: Works on desktop, tablet, and mobile
 - **Authentication**: Login/logout functionality with JWT tokens
 - **Navigation**: Sidebar with Dashboard, Containers, CI/CD, Repositories tabs
 
-## Development
+## 📚 Documentation
+
+### 📖 **[Complete Documentation Index](docs/README.md)**
+
+Our documentation is organized in the `docs/` directory with comprehensive guides for all aspects of the project:
+
+| Category | Document | Description |
+|----------|----------|-------------|
+| **Development** | [Development Guide](docs/DEVELOPMENT.md) | Complete setup and workflow |
+| | [Frontend Architecture](docs/FRONTEND_ARCHITECTURE.md) | Component structure and patterns |
+| **Deployment** | [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment procedures |
+| | [MySQL External Setup](docs/MYSQL_EXTERNAL_SETUP.md) | Database configuration |
+| **Security** | [Security & Authentication](docs/SECURITY_ENDPOINTS.md) | JWT and security practices |
+| | [Vault Setup](docs/vault-setup.md) | Secrets management configuration |
+| **Operations** | [Logging Setup](docs/LOGGING_SETUP.md) | Centralized logging configuration |
+
+### Quick Reference Links
+- **New to the project?** Start with [Development Guide](docs/DEVELOPMENT.md)
+- **Frontend development?** Check [Frontend Architecture](docs/FRONTEND_ARCHITECTURE.md)
+- **Deploying to production?** Follow [Deployment Guide](docs/DEPLOYMENT.md)
+- **Security questions?** Review [Security Documentation](docs/SECURITY_ENDPOINTS.md)
+- **Need quick commands?** Use [Quick Reference](docs/QUICK_REFERENCE.md)
+
+## Development Workflow
 
 ### Full Stack Development
 ```bash
-# Start both backend and frontend with one command
+# Start both backend and frontend
 ./scripts/dev.sh
 
 # Check status of all services
@@ -120,141 +126,116 @@ docker stop devtools-frontend-dev && docker rm devtools-frontend-dev
 ./scripts/dev.sh stop
 ```
 
-### Backend (Symfony)
+### Frontend Development (React + TypeScript)
 ```bash
-# Use Docker-based PHP/Composer (no local installation required)
-./scripts/docker-php.sh install
-./scripts/docker-php.sh console cache:clear
-./scripts/docker-php.sh console doctrine:migrations:migrate
-```
-
-### Frontend (React + TypeScript)
-```bash
-# Use Docker-based Node.js/npm (no local installation required)
+# Install dependencies
 ./scripts/docker-node.sh install
+
+# Start development server
 ./scripts/docker-node.sh dev
+
+# Build for production
 ./scripts/docker-node.sh build
+
+# Type checking
+./scripts/docker-node.sh npx tsc --noEmit
 ```
 
-### Using Makefile Commands (Legacy)
+### Backend Development (Symfony)
 ```bash
-# Start backend services only
-make up
+# Install dependencies
+./scripts/docker-php.sh install
 
-# Stop all services
-make down
+# Run database migrations
+./scripts/docker-php.sh console doctrine:migrations:migrate
 
-# View backend logs
-make logs
+# Clear cache
+./scripts/docker-php.sh console cache:clear
 
-# Run tests
-make test
+# Validate configuration
+./scripts/docker-php.sh validate
 ```
 
 ## Project Structure
 
 ```
 devtools-dashboard/
-├── backend/              # Symfony 7.2 application
-│   ├── .docker/         # Docker configuration
-│   ├── src/             # Application source code
-│   ├── config/          # Symfony configuration
-│   ├── public/          # Web root
-│   ├── var/             # Cache, logs, sessions
-│   └── tests/           # Test suites
-├── .github/workflows/   # CI/CD pipelines
-├── docs/               # Documentation
-├── nginx/              # Nginx configuration
-├── scripts/            # Utility scripts
-├── docker-stack.yml    # Docker Swarm configuration
-├── docker-compose.yml  # Development environment
-└── Makefile           # Development commands
+├── docs/                    # 📚 Comprehensive documentation
+│   ├── README.md           # Documentation index
+│   ├── DEVELOPMENT.md      # Development guide
+│   ├── FRONTEND_ARCHITECTURE.md # Component architecture
+│   ├── DEPLOYMENT.md       # Deployment procedures
+│   └── ...                 # Additional guides
+├── frontend/               # React TypeScript application
+│   ├── src/
+│   │   ├── components/     # Modular component structure
+│   │   │   ├── auth/      # Authentication components
+│   │   │   ├── dashboard/ # Dashboard components
+│   │   │   ├── layout/    # Layout components
+│   │   │   └── ui/        # Base UI components
+│   │   ├── types/         # TypeScript definitions
+│   │   └── App.tsx        # Root component
+├── backend/               # Symfony 7.2 application
+│   ├── src/              # Application source
+│   ├── config/           # Configuration
+│   └── tests/            # Test suites
+├── scripts/              # Development utilities
+├── .github/workflows/    # CI/CD pipelines
+└── docker-compose.yml    # Development environment
 ```
 
-## Documentation
+## Component Architecture
 
-- [Development Guide](docs/DEVELOPMENT.md) - Comprehensive development workflow and standards
-- [Deployment Guide](docs/DEPLOYMENT.md) - Multi-environment deployment procedures
-- [MySQL External Setup Guide](docs/MYSQL_EXTERNAL_SETUP.md) - External MySQL container setup with Vault integration
-- [Docker Socket Access Guide](DOCKER_SOCKET_ACCESS.md) - Docker integration configuration and troubleshooting
-- [Vault Setup Guide](docs/vault-setup.md) - HashiCorp Vault configuration
-- [Vault Secrets Template](docs/vault-secrets-template.md) - Secrets management template
-- [Project Rules](.cursorrules) - Full-stack coding standards and best practices
-- [TODO & Status](TODO.md) - Current project status and roadmap
+The frontend features a clean, modular architecture:
+
+```
+App.tsx (Root)
+├── AuthProvider (Context)
+├── ProtectedRoute (Auth Guard)
+└── Layout (Main Structure)
+    ├── Navbar (Sidebar Navigation)
+    └── Dashboard (Content Router)
+        ├── StatsCards (Overview Metrics)
+        ├── ContainersList (Docker Management)
+        ├── CPUChart (Performance Visualization)
+        └── TabContent (Feature Placeholders)
+```
+
+**Key Features:**
+- **TypeScript**: Strict typing for all components
+- **Modern React**: Functional components with hooks
+- **Reusable Components**: Modular, maintainable structure
+- **Responsive Design**: Mobile-first with Tailwind CSS
+- **Real-time Updates**: Efficient polling with cleanup
+
+For detailed component documentation, see [Frontend Architecture](docs/FRONTEND_ARCHITECTURE.md).
 
 ## Security
 
 This project follows security best practices:
-- All secrets managed through HashiCorp Vault
-- No hardcoded credentials in code
-- Container security with non-root users
-- HTTPS everywhere in production
-- Regular security updates and vulnerability scanning
+- ✅ **Secrets Management**: All secrets managed through HashiCorp Vault
+- ✅ **No Hardcoded Credentials**: Zero secrets in code or configuration
+- ✅ **Container Security**: Non-root users and minimal attack surface
+- ✅ **HTTPS Everywhere**: SSL/TLS in production environments
+- ✅ **Regular Updates**: Automated security updates and vulnerability scanning
+- ✅ **JWT Authentication**: Stateless, secure authentication system
 
-## Testing
-
-### Backend
-```bash
-cd backend
-php bin/phpunit
-```
-
-### Using Makefile
-```bash
-make test
-```
-
-## Deployment
-
-### Development
-```bash
-# Start full development environment
-./scripts/dev.sh
-
-# Or use Docker Compose directly
-docker compose up -d
-```
-
-### Production (Docker Swarm)
-
-#### 1. Set up External MySQL
-```bash
-# Set up standalone MySQL container with Vault integration
-./scripts/deployment/setup-standalone-mysql.sh production
-```
-
-#### 2. Deploy Application
-```bash
-# Automatic deployment via GitHub Actions (recommended)
-git push origin main
-
-# Or manual deployment
-./scripts/deployment/generate-env-file.sh
-docker stack deploy -c docker-stack.yml dashboard
-```
-
-#### 3. Initialize Database
-```bash
-# Run migrations
-docker exec <backend-container> php bin/console doctrine:migrations:migrate --no-interaction
-
-# Create initial user
-docker exec -it <backend-container> php bin/console app:create-user
-```
-
-See the [MySQL External Setup Guide](docs/MYSQL_EXTERNAL_SETUP.md) and [deployment documentation](docs/vault-setup.md) for detailed production setup instructions.
+For complete security documentation, see [Security & Authentication](docs/SECURITY_ENDPOINTS.md).
 
 ## Contributing
 
-1. Follow the full-stack coding standards defined in `.cursorrules`
-2. Use Docker-based development workflow (no local dependencies required)
-3. Use semantic versioning for releases
-4. All code must pass tests and security scans (both backend and frontend)
-5. Secrets must be managed through Vault
-6. Follow the DevOps and frontend best practices outlined in the project rules
-7. Ensure TypeScript strict mode compliance and accessibility standards
-8. Test responsive design on multiple screen sizes
+1. **Read the Documentation**: Start with [Development Guide](docs/DEVELOPMENT.md)
+2. **Follow Code Standards**: Review [Frontend Architecture](docs/FRONTEND_ARCHITECTURE.md)
+3. **Test Your Changes**: Use `./scripts/validate-setup.sh`
+4. **Update Documentation**: Keep docs in sync with code changes
 
-## License
+## Support
 
-MIT
+- **Development Issues**: Check [Development Guide](docs/DEVELOPMENT.md) troubleshooting
+- **Deployment Problems**: Review [Deployment Guide](docs/DEPLOYMENT.md) procedures
+- **Architecture Questions**: Consult [Frontend Architecture](docs/FRONTEND_ARCHITECTURE.md)
+- **Security Concerns**: Review [Security Documentation](docs/SECURITY_ENDPOINTS.md)
+
+---
+
+**📚 For complete documentation, visit [docs/README.md](docs/README.md)**

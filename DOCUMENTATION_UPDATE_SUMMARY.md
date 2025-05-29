@@ -138,8 +138,8 @@ All documentation now consistently points to:
 - **Current Status**: [CURRENT_STATUS.md](CURRENT_STATUS.md)
 - **Development Guide**: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 - **Project Rules**: [.cursorrules](.cursorrules)
-- **TODO & Roadmap**: [TODO.md](TODO.md)
-- **Quick Reference**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
+- **TODO & Roadmap**: [TODO.md](docs/TODO.md)
+- **Quick Reference**: [QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
 
 ---
 
