@@ -82,6 +82,12 @@ Welcome to the DevTools Dashboard documentation. This directory contains compreh
   - TypeScript type definitions
   - Development workflow
 
+- **[BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md)**: Backend architecture details
+  - Controller organization and responsibilities
+  - Service layer design patterns
+  - API design and routing structure
+  - Development standards and best practices
+
 - **[DOCKER_SOCKET_ACCESS.md](./DOCKER_SOCKET_ACCESS.md)**: Docker integration guide
   - Docker socket configuration
   - Container API access
