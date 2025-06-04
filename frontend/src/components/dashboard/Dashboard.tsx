@@ -1,12 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { api } from '@/lib/api'
 import type { DockerContainer, DockerImage } from '@/types/docker'
 import StatsCards from './StatsCards'
 import ContainersList from './ContainersList'
 import ImagesList from './ImagesList'
-import CPUChart from './CPUChart'
-import MemoryChart from './MemoryChart'
 import TabContent from './TabContent'
+
+// Lazy load chart components to reduce initial bundle size
+const CPUChart = lazy(() => import('./CPUChart'))
+const MemoryChart = lazy(() => import('./MemoryChart'))
+
+// Chart loading fallback component
+const ChartLoading = () => (
+  <div className="bg-white rounded-lg border p-6 animate-pulse">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 bg-gray-200 rounded"></div>
+        <div className="w-24 h-5 bg-gray-200 rounded"></div>
+      </div>
+      <div className="w-16 h-6 bg-gray-200 rounded-full"></div>
+    </div>
+    <div className="h-64 bg-gray-100 rounded"></div>
+  </div>
+)
 
 interface DashboardProps {
   activeTab: string
@@ -72,10 +88,14 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
           totalImages={totalImages}
         />
 
-        {/* Monitoring Charts */}
+        {/* Monitoring Charts - Lazy Loaded */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <CPUChart />
-          <MemoryChart />
+          <Suspense fallback={<ChartLoading />}>
+            <CPUChart />
+          </Suspense>
+          <Suspense fallback={<ChartLoading />}>
+            <MemoryChart />
+          </Suspense>
         </div>
 
         {/* Content Grid */}
