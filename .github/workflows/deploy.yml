@@ -1,189 +1,118 @@
-name: Deploy My Dashboard
+name: Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 env:
-  VAULT_VERSION: "1.19.4"
-  VAULT_SHA256: "d8621f31427ecb6712923fc2db207b3b3c04711b722b11f34627cd4cf837a9c6"
-
-permissions:
-  id-token: write
-  contents: read
+  HARBOR_REGISTRY: harbor.patricklehmann.dev
+  HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+  HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
 
 jobs:
-  build:
+  check-dependencies:
     runs-on: ubuntu-latest
     outputs:
-      backend-image: harbor.patricklehmann.dev/dashboard/backend:latest
-      frontend-image: harbor.patricklehmann.dev/dashboard/frontend:latest
-      backend-changed: ${{ steps.changes.outputs.backend }}
-      frontend-changed: ${{ steps.changes.outputs.frontend }}
-
+      deps-changed: ${{ steps.check-deps.outputs.deps-changed }}
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history for change detection
+          fetch-depth: 2  # Need previous commit to compare
 
-      - name: Detect changes
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-              - 'docker-stack.yml'
-              - '.github/workflows/deploy.yml'
-            frontend:
-              - 'frontend/**'
-              - 'docker-stack.yml'
-              - '.github/workflows/deploy.yml'
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
-      - name: Prepare cache directory
+      - name: Check if dependencies changed
+        id: check-deps
         run: |
-          mkdir -p /tmp/.buildx-cache
-      
-      - name: Install Vault CLI
-        run: ./scripts/deployment/install-vault.sh
-        env:
-          VAULT_VERSION: ${{ env.VAULT_VERSION }}
-          VAULT_SHA256: ${{ env.VAULT_SHA256 }}
-
-      - name: Authenticate with Vault
-        run: ./scripts/deployment/setup-vault-auth.sh
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-
-      - name: Show what will be built
-        run: |
-          echo "Backend changed: ${{ steps.changes.outputs.backend }}"
-          echo "Frontend changed: ${{ steps.changes.outputs.frontend }}"
-          if [ "${{ steps.changes.outputs.backend }}" == "true" ]; then
-            echo "✅ Will build backend image"
+          if git diff --name-only HEAD~1 HEAD | grep -E "(composer\.(json|lock)|symfony\.lock)" > /dev/null; then
+            echo "deps-changed=true" >> $GITHUB_OUTPUT
+            echo "📦 Dependencies have changed!"
           else
-            echo "⏭️ Skipping backend build (no changes)"
-          fi
-          if [ "${{ steps.changes.outputs.frontend }}" == "true" ]; then
-            echo "✅ Will build frontend image"
-          else
-            echo "⏭️ Skipping frontend build (no changes)"
+            echo "deps-changed=false" >> $GITHUB_OUTPUT
+            echo "✅ No dependency changes detected"
           fi
 
-      - name: Fetch build secrets from Vault
-        run: ./scripts/deployment/fetch-build-secrets.sh
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+  build-deps-image:
+    needs: check-dependencies
+    if: needs.check-dependencies.outputs.deps-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Log in to Harbor
+      - name: Log in to Harbor Registry
         uses: docker/login-action@v3
         with:
-          registry: harbor.patricklehmann.dev
+          registry: ${{ env.HARBOR_REGISTRY }}
           username: ${{ env.HARBOR_USERNAME }}
           password: ${{ env.HARBOR_PASSWORD }}
 
-      - name: Build and push Backend Docker image
-        if: steps.changes.outputs.backend == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/.docker/Dockerfile
-          target: production
-          push: true
-          tags: harbor.patricklehmann.dev/dashboard/backend:latest
-          build-args: |
-            DOCKER_GID=986
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-      - name: Build and push Frontend Docker image
-        if: steps.changes.outputs.frontend == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/.docker/Dockerfile
-          target: production
-          push: true
-          tags: harbor.patricklehmann.dev/dashboard/frontend:latest
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-      - name: Move cache
+      - name: Build and push dependencies base image
         run: |
-          rm -rf /tmp/.buildx-cache
-          if [ -d /tmp/.buildx-cache-new ]; then
-            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-          fi
+          echo "🔧 Building backend dependencies base image..."
+          docker build \
+            -f backend/.docker/Dockerfile.deps \
+            -t ${{ env.HARBOR_REGISTRY }}/dashboard/backend-deps:latest \
+            -t ${{ env.HARBOR_REGISTRY }}/dashboard/backend-deps:$(date +%Y%m%d-%H%M%S) \
+            backend/
+          
+          echo "📤 Pushing dependencies image to Harbor..."
+          docker push ${{ env.HARBOR_REGISTRY }}/dashboard/backend-deps:latest
+          docker push ${{ env.HARBOR_REGISTRY }}/dashboard/backend-deps:$(date +%Y%m%d-%H%M%S)
 
-  deploy:
+  build-and-deploy:
+    needs: [check-dependencies, build-deps-image]
+    if: always() && (needs.build-deps-image.result == 'success' || needs.build-deps-image.result == 'skipped')
     runs-on: ubuntu-latest
-    environment: production
-    needs: build
-    if: needs.build.outputs.backend-changed == 'true' || needs.build.outputs.frontend-changed == 'true'
-
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Vault CLI
-        run: ./scripts/deployment/install-vault.sh
-        env:
-          VAULT_VERSION: ${{ env.VAULT_VERSION }}
-          VAULT_SHA256: ${{ env.VAULT_SHA256 }}
+      - name: Log in to Harbor Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ env.HARBOR_USERNAME }}
+          password: ${{ env.HARBOR_PASSWORD }}
 
-      - name: Authenticate with Vault
-        run: ./scripts/deployment/setup-vault-auth.sh
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-
-      - name: Fetch deployment secrets from Vault
-        run: ./scripts/deployment/fetch-deploy-secrets.sh
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-
-      - name: Generate environment file from Vault
-        run: ./scripts/deployment/generate-env-file.sh
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-
-      - name: Create deployment info file
+      - name: Ensure dependencies base image exists
         run: |
-          echo "BACKEND_CHANGED=${{ needs.build.outputs.backend-changed }}" > deployment-info.env
-          echo "FRONTEND_CHANGED=${{ needs.build.outputs.frontend-changed }}" >> deployment-info.env
-          echo "Deployment info:"
-          cat deployment-info.env
+          if ! docker pull ${{ env.HARBOR_REGISTRY }}/dashboard/backend-deps:latest; then
+            echo "⚠️ Base image not found. Building initial version..."
+            docker build \
+              -f backend/.docker/Dockerfile.deps \
+              -t ${{ env.HARBOR_REGISTRY }}/dashboard/backend-deps:latest \
+              backend/
+            docker push ${{ env.HARBOR_REGISTRY }}/dashboard/backend-deps:latest
+          fi
 
-      - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.SERVER_IP }}
-          username: patrick
-          port: ${{ env.SERVER_PORT }}
-          key: ${{ env.SSH_PRIVATE_KEY }}
-          source: "docker-stack.yml,.env.production,scripts/deployment/deploy-to-server.sh,deployment-info.env"
-          target: "/home/patrick/dashboard"
-          strip_components: 0
+      - name: Build optimized backend image
+        run: |
+          echo "🚀 Building optimized backend image..."
+          docker build \
+            -f backend/.docker/Dockerfile.optimized \
+            -t ${{ env.HARBOR_REGISTRY }}/dashboard/backend:latest \
+            --target production \
+            backend/
 
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ env.SERVER_IP }}
-          username: patrick
-          port: ${{ env.SERVER_PORT }}
-          key: ${{ env.SSH_PRIVATE_KEY }}
-          command_timeout: 5m
-          script: |
-            chmod +x /home/patrick/dashboard/scripts/deployment/deploy-to-server.sh
-            /home/patrick/dashboard/scripts/deployment/deploy-to-server.sh
+      - name: Build frontend image
+        run: |
+          echo "🎨 Building frontend image..."
+          docker build \
+            -f frontend/.docker/Dockerfile \
+            -t ${{ env.HARBOR_REGISTRY }}/dashboard/frontend:latest \
+            --target production \
+            frontend/
+
+      - name: Push images to Harbor
+        run: |
+          echo "📤 Pushing images to Harbor..."
+          docker push ${{ env.HARBOR_REGISTRY }}/dashboard/backend:latest
+          docker push ${{ env.HARBOR_REGISTRY }}/dashboard/frontend:latest
+
+      - name: Deploy to Docker Swarm
+        run: |
+          echo "🚀 Deploying to production..."
+          # Add your deployment logic here
+          # docker stack deploy -c docker-stack.yml dashboard 
