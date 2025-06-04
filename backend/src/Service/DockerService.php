@@ -364,7 +364,7 @@ final readonly class DockerService
             'parent_id' => $image['ParentId'] ?? '',
             'repo_tags' => $image['RepoTags'] ?? [],
             'repo_digests' => $image['RepoDigests'] ?? [],
-            'created' => $image['Created'] ?? 0,
+            'created' => $image['Created'] * 1000 ?? null, // Convert to milliseconds for JS
             'size' => $image['Size'] ?? 0,
             'virtual_size' => $image['VirtualSize'] ?? 0,
             'shared_size' => $image['SharedSize'] ?? 0,
