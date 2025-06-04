@@ -7,18 +7,28 @@ set -e
 
 echo "🔧 Building backend dependencies base image..."
 
+# Generate timestamp once to ensure consistency
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+echo "📅 Building with timestamp: $TIMESTAMP"
+
 # Build the dependencies image
 docker build \
     -f backend/.docker/Dockerfile.deps \
     -t harbor.patricklehmann.dev/dashboard/backend-deps:latest \
-    -t harbor.patricklehmann.dev/dashboard/backend-deps:$(date +%Y%m%d-%H%M%S) \
+    -t harbor.patricklehmann.dev/dashboard/backend-deps:$TIMESTAMP \
     backend/
 
 echo "📤 Pushing dependencies image to Harbor..."
 
-# Push both latest and timestamped versions
+# Push latest version
 docker push harbor.patricklehmann.dev/dashboard/backend-deps:latest
-docker push harbor.patricklehmann.dev/dashboard/backend-deps:$(date +%Y%m%d-%H%M%S)
+
+# Push timestamped version (should work now)
+if docker push harbor.patricklehmann.dev/dashboard/backend-deps:$TIMESTAMP; then
+    echo "✅ Timestamped version pushed: $TIMESTAMP"
+else
+    echo "⚠️  Timestamped push failed, but latest version is available"
+fi
 
 echo "✅ Dependencies base image built and pushed successfully!"
 echo ""
