@@ -143,4 +143,16 @@ final class DockerController extends AbstractController
             'timestamp' => new \DateTimeImmutable(),
         ]);
     }
+
+    #[Route('/images', name: 'api_docker_images', methods: ['GET'])]
+    public function getImages(): JsonResponse
+    {
+        $images = $this->dockerService->getImages();
+        
+        return $this->json([
+            'images' => $images,
+            'count' => count($images),
+            'timestamp' => new \DateTimeImmutable(),
+        ]);
+    }
 } 

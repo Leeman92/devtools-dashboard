@@ -1,4 +1,4 @@
-import { BarChart3, Container, GitBranch, Package } from 'lucide-react'
+import { BarChart3, Container, GitBranch, Package, Database } from 'lucide-react'
 
 interface NavbarProps {
   activeTab: string
@@ -31,6 +31,18 @@ const Navbar = ({ activeTab, setActiveTab }: NavbarProps) => {
         >
           <Container className="h-5 w-5" />
           <span>Containers</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('images')}
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+            activeTab === 'images' 
+              ? 'bg-slate-700 text-white' 
+              : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+          }`}
+        >
+          <Database className="h-5 w-5" />
+          <span>Images</span>
         </button>
 
         <button

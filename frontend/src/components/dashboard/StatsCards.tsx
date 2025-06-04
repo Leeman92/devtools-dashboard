@@ -1,11 +1,12 @@
-import { Container, CheckCircle, Calendar } from 'lucide-react'
+import { Container, CheckCircle, Calendar, Database } from 'lucide-react'
 
 interface StatsCardsProps {
   runningContainers: number
   recentCommits: number
+  totalImages: number
 }
 
-const StatsCards: React.FC<StatsCardsProps> = ({ runningContainers, recentCommits }) => {
+const StatsCards: React.FC<StatsCardsProps> = ({ runningContainers, recentCommits, totalImages }) => {
   return (
     <div className="flex gap-6 mb-8">
       {/* Containers Running Card */}
@@ -37,7 +38,7 @@ const StatsCards: React.FC<StatsCardsProps> = ({ runningContainers, recentCommit
       </div>
 
       {/* Recent Commits Card */}
-      <div className="bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-xl p-6 shadow-lg flex-1 min-w-0">
+      <div className="bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-xl p-6 shadow-lg flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-orange-100 text-sm font-medium">Recent</p>
@@ -46,6 +47,19 @@ const StatsCards: React.FC<StatsCardsProps> = ({ runningContainers, recentCommit
           </div>
           <div className="bg-white/20 p-4 rounded-xl">
             <Calendar className="h-8 w-8" />
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-gradient-to-br from-purple-400 to-purple-600 text-white rounded-xl p-6 shadow-lg flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-purple-100 text-sm font-medium">Total</p>
+            <p className="text-purple-100 text-sm font-medium">Images</p>
+            <p className="text-5xl font-bold mt-2">{totalImages}</p>
+          </div>
+          <div className="bg-white/20 p-4 rounded-xl">
+            <Database className="h-8 w-8" />
           </div>
         </div>
       </div>

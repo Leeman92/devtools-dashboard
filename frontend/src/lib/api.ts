@@ -99,6 +99,7 @@ export const api = {
     restart: (id: string) => apiClient.post(`/docker/containers/${id}/restart`),
     logs: (id: string, lines?: number) => apiClient.get(`/docker/containers/${id}/logs${lines ? `?lines=${lines}` : ''}`),
     services: () => apiClient.get('/docker/services'),
+    images: () => apiClient.get('/docker/images'),
   },
 
   // Infrastructure

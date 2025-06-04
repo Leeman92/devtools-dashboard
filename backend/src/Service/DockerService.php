@@ -83,6 +83,38 @@ final readonly class DockerService
     }
 
     /**
+     * Get Docker images.
+     *
+     * @return array<string, mixed>
+     */
+    public function getImages(): array
+    {
+        try {
+            $images = $this->makeDockerApiRequest('/images/json');
+            $result = [];
+
+            foreach ($images as $image) {
+                $result[] = $this->parseImageData($image);
+            }
+
+            $this->logger->info('Retrieved Docker images', [
+                'image_count' => count($result),
+            ]);
+
+            return $result;
+
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to retrieve Docker images', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    
+
+    /**
      * Get container logs.
      */
     public function getContainerLogs(string $containerId, int $lines = 100): array
@@ -320,6 +352,71 @@ final readonly class DockerService
             'created' => $container['Created'] * 1000 ?? null, // Convert to milliseconds for JS
             'network_mode' => $container['HostConfig']['NetworkMode'] ?? '',
         ];
+    }
+
+    /**
+     * Parse image data from Docker API response.
+     */
+    private function parseImageData(array $image): array
+    {
+        return [
+            'id' => $image['Id'] ?? '',
+            'parent_id' => $image['ParentId'] ?? '',
+            'repo_tags' => $image['RepoTags'] ?? [],
+            'repo_digests' => $image['RepoDigests'] ?? [],
+            'created' => $image['Created'] ?? 0,
+            'size' => $image['Size'] ?? 0,
+            'virtual_size' => $image['VirtualSize'] ?? 0,
+            'shared_size' => $image['SharedSize'] ?? 0,
+            'labels' => $image['Labels'] ?? [],
+            'containers' => $image['Containers'] ?? -1,
+            'short_id' => substr($image['Id'] ?? '', 7, 12),
+            'created_at' => $image['Created'] ? date('Y-m-d H:i:s', $image['Created']) : '',
+            'size_human' => $this->formatBytes($image['Size'] ?? 0),
+            'tags' => $this->formatImageTags($image['RepoTags'] ?? []),
+        ];
+    }
+
+    /**
+     * Format bytes to human readable format.
+     */
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes === 0) {
+            return '0 B';
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $factor = floor(log($bytes, 1024));
+        
+        return sprintf('%.1f %s', $bytes / pow(1024, $factor), $units[$factor]);
+    }
+
+    /**
+     * Format image tags for display.
+     */
+    private function formatImageTags(array $tags): array
+    {
+        $result = [];
+        
+        foreach ($tags as $tag) {
+            if (str_contains($tag, ':')) {
+                [$repository, $version] = explode(':', $tag, 2);
+                $result[] = [
+                    'full' => $tag,
+                    'repository' => $repository,
+                    'version' => $version,
+                ];
+            } else {
+                $result[] = [
+                    'full' => $tag,
+                    'repository' => $tag,
+                    'version' => 'latest',
+                ];
+            }
+        }
+        
+        return $result;
     }
 
     /**

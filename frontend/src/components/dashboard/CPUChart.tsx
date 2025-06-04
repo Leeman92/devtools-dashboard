@@ -43,15 +43,11 @@ const CPUChart = () => {
         // Try to fetch real data from infrastructure metrics
         try {
           const response: ChartResponse = await api.infrastructure.chartData('docker', 'cpu_percent', 1)
-          console.log('CPU API Response:', response) // Debug log
           
           if (response.chart_data && response.chart_data.length > 0) {
             const formattedData: ChartData[] = response.chart_data.map(point => {
               const date = new Date(point.timestamp)
               const formattedTime = format(date, 'HH:mm')
-              
-              // Debug timezone conversion
-              console.log(`Timestamp: ${point.timestamp} -> Local: ${date.toLocaleString()} -> Chart: ${formattedTime}`)
               
               return {
                 timestamp: point.timestamp,
@@ -59,7 +55,6 @@ const CPUChart = () => {
                 formattedTime: formattedTime
               }
             })
-            console.log('Formatted CPU data:', formattedData) // Debug log
             setChartData(formattedData)
             setCurrentCPU(formattedData[formattedData.length - 1]?.value || 0)
             setError(null) // Clear any previous errors
@@ -67,7 +62,7 @@ const CPUChart = () => {
             throw new Error('No chart data available - API returned empty data')
           }
         } catch (apiError) {
-          console.log('API Error:', apiError)
+          console.error('API Error:', apiError)
           throw apiError // Re-throw to be caught by outer catch
         }
         

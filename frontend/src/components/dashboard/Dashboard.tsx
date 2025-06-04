@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import type { DockerContainer } from '@/types/docker'
+import type { DockerContainer, DockerImage } from '@/types/docker'
 import StatsCards from './StatsCards'
 import ContainersList from './ContainersList'
+import ImagesList from './ImagesList'
 import CPUChart from './CPUChart'
 import MemoryChart from './MemoryChart'
 import TabContent from './TabContent'
@@ -13,41 +14,53 @@ interface DashboardProps {
 
 const Dashboard = ({ activeTab }: DashboardProps) => {
   const [containers, setContainers] = useState<DockerContainer[]>([])
+  const [images, setImages] = useState<DockerImage[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Fetch containers from the API
-    const fetchContainers = async () => {
+    // Fetch both containers and images
+    const fetchData = async () => {
       try {
-        const data = await api.docker.containers()
-        setContainers(data.containers || [])
+        const [containersData, imagesData] = await Promise.all([
+          api.docker.containers(),
+          api.docker.images()
+        ])
+        
+        setContainers(containersData.containers || [])
+        setImages(imagesData.images || [])
       } catch (error) {
-        console.error('Failed to fetch containers:', error)
-        // Don't set containers to empty array on error, keep previous data
+        console.error('Failed to fetch Docker data:', error)
+        // Don't reset data on error, keep previous data
       } finally {
         setLoading(false)
       }
     }
 
-    fetchContainers()
+    fetchData()
     
-    // Set up polling for real-time updates
-    const interval = setInterval(fetchContainers, 5000)
+    // Set up polling for real-time updates (both containers and images)
+    const interval = setInterval(fetchData, 5000)
     return () => clearInterval(interval)
   }, [])
 
-  // Fetch containers function for manual refresh
-  const fetchContainers = async () => {
+  // Fetch data function for manual refresh
+  const fetchData = async () => {
     try {
-      const data = await api.docker.containers()
-      setContainers(data.containers || [])
+      const [containersData, imagesData] = await Promise.all([
+        api.docker.containers(),
+        api.docker.images()
+      ])
+      
+      setContainers(containersData.containers || [])
+      setImages(imagesData.images || [])
     } catch (error) {
-      console.error('Failed to fetch containers:', error)
+      console.error('Failed to fetch Docker data:', error)
     }
   }
 
   const runningContainers = containers.filter(c => c.state === 'running' || c.status.toLowerCase().includes('up'))
   const recentCommits = 12 // Mock data
+  const totalImages = images.length
 
   if (activeTab === 'dashboard') {
     return (
@@ -56,6 +69,7 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
         <StatsCards 
           runningContainers={runningContainers.length}
           recentCommits={recentCommits}
+          totalImages={totalImages}
         />
 
         {/* Monitoring Charts */}
@@ -65,13 +79,20 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
         </div>
 
         {/* Content Grid */}
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Docker Containers */}
           <ContainersList 
             containers={containers}
             loading={loading}
             showAll={false}
-            onContainerAction={fetchContainers}
+            onContainerAction={fetchData}
+          />
+          
+          {/* Docker Images */}
+          <ImagesList 
+            images={images}
+            loading={loading}
+            showAll={false}
           />
         </div>
       </div>
@@ -86,13 +107,25 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
         showAll={true}
         title="All Docker Containers"
         description="Complete list of Docker containers with detailed information"
-        onContainerAction={fetchContainers}
+        onContainerAction={fetchData}
       />
     )
   }
 
   if (activeTab === 'cicd') {
     return <TabContent type="cicd" />
+  }
+
+  if (activeTab === 'images') {
+    return (
+      <ImagesList 
+        images={images}
+        loading={loading}
+        showAll={true}
+        title="All Docker Images"
+        description="Complete list of Docker images with detailed information"
+      />
+    )
   }
 
   if (activeTab === 'repositories') {
