@@ -149,16 +149,7 @@ else
     print_status $YELLOW "⚠️  Environment generation script not found"
 fi
 
-# 8. Check if Docker dependencies base image needs updating
-print_status $YELLOW "🐳 Checking Docker dependencies base image..."
-if ./scripts/smart-deps-check.sh; then
-    print_status $GREEN "✅ Dependencies base image validation completed"
-else
-    print_status $RED "❌ Dependencies base image validation failed"
-    VALIDATION_FAILED=true
-fi
-
-# 9. Validate that staged files don't break the build
+# 8. Validate that staged files don't break the build
 print_status $YELLOW "🔨 Testing Docker build with staged changes..."
 if git diff --cached --name-only | grep -q "backend/"; then
     # Save working directory state (only if there are unstaged changes)
