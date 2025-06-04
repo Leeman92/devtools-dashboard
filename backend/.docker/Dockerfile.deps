@@ -1,0 +1,56 @@
+FROM dunglas/frankenphp:1.3.6-php8.4-alpine AS deps-base
+
+WORKDIR /app
+ARG USERNAME=backend
+ARG UID=1000
+ARG GID=1000
+ARG DOCKER_GID=999
+
+# Install system dependencies and PHP extensions
+RUN apk add --no-cache \
+    git \
+    unzip \
+    bash \
+    mysql-dev \
+    && docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    opcache \
+    && php -m | grep pdo_mysql 
+
+# Create group and user with the same UID/GID as the host user
+RUN addgroup -g $GID $USERNAME \
+ && adduser -D -u $UID -G $USERNAME $USERNAME \
+ && (getent group docker > /dev/null 2>&1 || addgroup -g $DOCKER_GID docker 2>/dev/null || addgroup docker) \
+ && adduser $USERNAME docker
+
+# Install Composer
+COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
+
+# Copy composer files for dependency installation
+COPY composer.json ./
+COPY composer.lock ./
+COPY symfony.lock ./
+
+# Verify files were copied correctly
+RUN ls -la composer.* symfony.lock
+
+# Install production dependencies (no dev dependencies for base image)
+RUN composer update --no-scripts && composer install --no-dev --no-scripts --optimize-autoloader
+
+# Fix ownership of composer files and vendor directory
+RUN chown -R $USERNAME:$USERNAME /app
+
+# This image contains:
+# - PHP 8.4 + FrankenPHP
+# - All system dependencies
+# - All PHP extensions
+# - All Composer dependencies installed
+# - Optimized autoloader
+# - Proper user setup
+
+USER $USERNAME
+
+# Build this image with:
+# docker build -f .docker/Dockerfile.deps -t harbor.patricklehmann.dev/dashboard/backend-deps:latest .
+# docker push harbor.patricklehmann.dev/dashboard/backend-deps:latest 

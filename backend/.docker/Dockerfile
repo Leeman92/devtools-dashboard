@@ -1,67 +1,36 @@
-FROM dunglas/frankenphp:1.3.6-php8.4-alpine AS base
+# Use the pre-built dependencies base image from Harbor
+FROM harbor.patricklehmann.dev/dashboard/backend-deps:latest AS base
 
-WORKDIR /app
+# Re-declare ARGs for this stage
 ARG USERNAME=backend
 ARG UID=1000
 ARG GID=1000
 ARG DOCKER_GID=999
 
-# Install system dependencies and PHP extensions
-RUN apk add --no-cache \
-    git \
-    unzip \
-    bash \
-    mysql-dev \
-    && docker-php-ext-install \
-    pdo \
-    pdo_mysql \
-    opcache \
-    && php -m | grep pdo_mysql 
+USER root
 
-# Create group and user with the same UID/GID as the host user
-RUN addgroup -g $GID $USERNAME \
- && adduser -D -u $UID -G $USERNAME $USERNAME \
- && (getent group docker > /dev/null 2>&1 || addgroup -g $DOCKER_GID docker 2>/dev/null || addgroup docker) \
- && adduser $USERNAME docker
+# Copy application source code (excluding dependencies which are already installed)
+COPY --chown=$USERNAME:$USERNAME . .
 
-# Install Composer
-COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
-
-# Copy composer files first for better layer caching
-COPY composer.json ./
-COPY composer.lock ./
-COPY symfony.lock ./
-
-# Verify files were copied correctly
-RUN ls -la composer.* symfony.lock
-
-# Install dependencies as root first, then change ownership
-RUN composer update --no-scripts && composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
-
-COPY . .
-
-# Fix ownership of all files
-RUN chown -R $USERNAME:$USERNAME /app
-
-# Complete composer installation
+# Complete composer installation with application code
 RUN composer dump-autoload --optimize
 
+# Copy Caddy configuration
 COPY .docker/caddy/Caddyfile /etc/caddy/Caddyfile
 
 USER $USERNAME
 
+# Development stage - adds dev dependencies if needed
 FROM base AS development
 
 USER root
 
-RUN apk add --no-cache \
-    bash
-
-# Install dev dependencies
-RUN composer update --no-scripts && composer install --optimize-autoloader
+# Install dev dependencies only if needed
+RUN composer install --optimize-autoloader
 
 USER $USERNAME
 
+# Production stage - already optimized
 FROM base AS production
 
 # Re-declare ARGs for this stage
@@ -70,8 +39,14 @@ ARG UID=1000
 ARG GID=1000
 ARG DOCKER_GID=999
 
-# Production is already optimized in base stage
+# Production build is already optimized in base stage
 # Just ensure proper permissions
 USER root
 RUN chown -R $USERNAME:$USERNAME /app
 USER $USERNAME
+
+# This Dockerfile is much faster because:
+# 1. Dependencies are pre-installed in base image
+# 2. Only application code needs to be copied
+# 3. Minimal composer operations needed
+# 4. Base image is cached in Harbor registry 
