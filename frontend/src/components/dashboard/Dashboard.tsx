@@ -26,8 +26,8 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
           api.docker.images()
         ])
         
-        setContainers(containersData.containers || [])
-        setImages(imagesData.images || [])
+        setContainers(containersData?.containers || [])
+        setImages(imagesData?.images || [])
       } catch (error) {
         console.error('Failed to fetch Docker data:', error)
         // Don't reset data on error, keep previous data
@@ -51,16 +51,16 @@ const Dashboard = ({ activeTab }: DashboardProps) => {
         api.docker.images()
       ])
       
-      setContainers(containersData.containers || [])
-      setImages(imagesData.images || [])
+      setContainers(containersData?.containers || [])
+      setImages(imagesData?.images || [])
     } catch (error) {
       console.error('Failed to fetch Docker data:', error)
     }
   }
 
-  const runningContainers = containers.filter(c => c.state === 'running' || c.status.toLowerCase().includes('up'))
+  const runningContainers = containers?.filter(c => c.state === 'running' || c.status.toLowerCase().includes('up')) || []
   const recentCommits = 12 // Mock data
-  const totalImages = images.length
+  const totalImages = images?.length || 0
 
   if (activeTab === 'dashboard') {
     return (

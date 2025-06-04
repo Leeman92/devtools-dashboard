@@ -35,7 +35,13 @@ class ApiClient {
       throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    try {
+      const data = await response.json();
+      return data || {};
+    } catch (error) {
+      console.error('Failed to parse JSON response:', error);
+      throw new Error('Invalid response format');
+    }
   }
 
   async get<T = any>(endpoint: string): Promise<T> {
